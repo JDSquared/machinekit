@@ -24,7 +24,7 @@ MKUUID=a42c8c6b-4025-4f83-ba28-dad21114744a
 # REMOTE=1 means: zeroMQ sockets will use TCP as specified below for address and port
 # REMOTE=0 means: zeroMQ will use IPC sockets in RUNDIR/<rtapi_instance>.<service>.<uuid>
 #
-REMOTE=0
+REMOTE=1
 
 # -------------- network setup -----------------
 # only relevant when using TCP, not needed in local case (REMOTE=0)
