@@ -247,19 +247,19 @@ static int btint_thc_register(btint_thc_t *brd, const char *name)
 	r += hal_pin_bit_newf(HAL_IN, &(brd->pins->dry_run),
 					comp_id, "%s.dry-run", brd->halname);
 
-	r += hal_pin_float_newf(HAL_RW, &(brd->pins->vel_tol),
+	r += hal_pin_float_newf(HAL_IN, &(brd->pins->vel_tol),
 					comp_id, "%s.vel-tol", brd->halname);
-	r += hal_pin_float_newf(HAL_RW, &(brd->pins->volt_tol),
+	r += hal_pin_float_newf(HAL_IN, &(brd->pins->volt_tol),
 					comp_id, "%s.volt-tol", brd->halname);
-	r += hal_pin_float_newf(HAL_RW, &(brd->pins->correction_kp),
+	r += hal_pin_float_newf(HAL_IN, &(brd->pins->correction_kp),
 					comp_id, "%s.correction-kp", brd->halname);
-	r += hal_pin_float_newf(HAL_RW, &(brd->pins->correction_kd),
+	r += hal_pin_float_newf(HAL_IN, &(brd->pins->correction_kd),
 					comp_id, "%s.correction-kd", brd->halname);
-	r += hal_pin_u32_newf(HAL_RW, &(brd->pins->range_sel),
+	r += hal_pin_u32_newf(HAL_IN, &(brd->pins->range_sel),
 					comp_id, "%s.range-sel", brd->halname);
-	r += hal_pin_float_newf(HAL_RW, &(brd->pins->plasma_divisor),
+	r += hal_pin_float_newf(HAL_IN, &(brd->pins->plasma_divisor),
 					comp_id, "%s.plasma-divisor", brd->halname);
-	r += hal_pin_bit_newf(HAL_RW, &(brd->pins->has_arc_ok),
+	r += hal_pin_bit_newf(HAL_IN, &(brd->pins->has_arc_ok),
 					comp_id, "%s.has-arc-ok", brd->halname);
 
 
