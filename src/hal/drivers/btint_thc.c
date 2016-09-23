@@ -444,6 +444,7 @@ static int btint_thc_update(void *void_btint_thc, const hal_funct_args_t *fa)
 	if(temp == 0) {
 		*brd->pins->ready = 0;
 		*brd->pins->z_pos_out = *brd->pins->z_pos_in;
+	    *brd->pins->arc_ok = 0;
 		return 0;
 	}
 	else if(*brd->pins->ready == 0) {
