@@ -158,121 +158,113 @@ static int btint_thc_register(btint_thc_t *brd, const char *name)
     rtapi_snprintf(brd->halname, sizeof(brd->halname), "btint_thc.%d", num_boards);
     strlwr(brd->halname);
 
-		r = btint_thc_mmap(brd);
-		if (r) {
-				BTINT_ERR(brd->halname, "btint board failed memory mapping");
-				return -EIO;
-		}
+	r = btint_thc_mmap(brd);
+	if (r) {
+			BTINT_ERR(brd->halname, "btint board failed memory mapping");
+			return -EIO;
+	}
 
     BTINT_PRINT(brd->halname, "initialized JD2 BTINT board on %s\n", brd->uio_dev);
     num_boards++;
 
-		// Export hal pins
-		brd->pins = hal_malloc(sizeof(btint_thc_pins_t));
-		memset(brd->pins, 0, sizeof(btint_thc_pins_t));
+	// Export hal pins
+	brd->pins = hal_malloc(sizeof(btint_thc_pins_t));
+	memset(brd->pins, 0, sizeof(btint_thc_pins_t));
 
-		// Gains
-		r = hal_pin_float_newf(HAL_OUT, &(brd->pins->gain10int),
-            comp_id, "%s.gain10int", brd->halname);
-		r = hal_pin_float_newf(HAL_OUT, &(brd->pins->gain10x),
-            comp_id, "%s.gain10x", brd->halname);
-		r = hal_pin_float_newf(HAL_OUT, &(brd->pins->gain10x2),
-						comp_id, "%s.gain10x2", brd->halname);
-		r = hal_pin_float_newf(HAL_OUT, &(brd->pins->gain10x3),
-            comp_id, "%s.gain10x3", brd->halname);
-		r = hal_pin_float_newf(HAL_OUT, &(brd->pins->gain20int),
-						comp_id, "%s.gain20int", brd->halname);
-		r = hal_pin_float_newf(HAL_OUT, &(brd->pins->gain20x),
-            comp_id, "%s.gain20x", brd->halname);
-		r = hal_pin_float_newf(HAL_OUT, &(brd->pins->gain20x2),
-						comp_id, "%s.gain20x2", brd->halname);
-		r = hal_pin_float_newf(HAL_OUT, &(brd->pins->gain20x3),
-            comp_id, "%s.gain20x3", brd->halname);
-		r = hal_pin_float_newf(HAL_OUT, &(brd->pins->gain300int),
-						comp_id, "%s.gain300int", brd->halname);
-		r = hal_pin_float_newf(HAL_OUT, &(brd->pins->gain300x),
-						comp_id, "%s.gain300x", brd->halname);
-		r = hal_pin_float_newf(HAL_OUT, &(brd->pins->gain300x2),
-						comp_id, "%s.gain300x2", brd->halname);
-		r = hal_pin_float_newf(HAL_OUT, &(brd->pins->gain300x3),
-						comp_id, "%s.gain300x3", brd->halname);
+	// Gains
+	r = hal_pin_float_newf(HAL_OUT, &(brd->pins->gain10int),
+        comp_id, "%s.gain10int", brd->halname);
+	r = hal_pin_float_newf(HAL_OUT, &(brd->pins->gain10x),
+        comp_id, "%s.gain10x", brd->halname);
+	r = hal_pin_float_newf(HAL_OUT, &(brd->pins->gain10x2),
+					comp_id, "%s.gain10x2", brd->halname);
+	r = hal_pin_float_newf(HAL_OUT, &(brd->pins->gain10x3),
+        comp_id, "%s.gain10x3", brd->halname);
+	r = hal_pin_float_newf(HAL_OUT, &(brd->pins->gain20int),
+					comp_id, "%s.gain20int", brd->halname);
+	r = hal_pin_float_newf(HAL_OUT, &(brd->pins->gain20x),
+        comp_id, "%s.gain20x", brd->halname);
+	r = hal_pin_float_newf(HAL_OUT, &(brd->pins->gain20x2),
+					comp_id, "%s.gain20x2", brd->halname);
+	r = hal_pin_float_newf(HAL_OUT, &(brd->pins->gain20x3),
+        comp_id, "%s.gain20x3", brd->halname);
+	r = hal_pin_float_newf(HAL_OUT, &(brd->pins->gain300int),
+					comp_id, "%s.gain300int", brd->halname);
+	r = hal_pin_float_newf(HAL_OUT, &(brd->pins->gain300x),
+					comp_id, "%s.gain300x", brd->halname);
+	r = hal_pin_float_newf(HAL_OUT, &(brd->pins->gain300x2),
+					comp_id, "%s.gain300x2", brd->halname);
+	r = hal_pin_float_newf(HAL_OUT, &(brd->pins->gain300x3),
+					comp_id, "%s.gain300x3", brd->halname);
 
-		// IO Pins
-		r += hal_pin_bit_newf(HAL_OUT, &(brd->pins->arc_ok),
-						comp_id, "%s.arc-ok", brd->halname);
-		r += hal_pin_bit_newf(HAL_IN, &(brd->pins->torch_on),
-						comp_id, "%s.torch-on", brd->halname);
+	// IO Pins
+	r += hal_pin_bit_newf(HAL_OUT, &(brd->pins->arc_ok),
+					comp_id, "%s.arc-ok", brd->halname);
+	r += hal_pin_bit_newf(HAL_IN, &(brd->pins->torch_on),
+					comp_id, "%s.torch-on", brd->halname);
 
-		// THC
-		r += hal_pin_float_newf(HAL_OUT, &(brd->pins->arc_volt),
-						comp_id, "%s.arc-volt", brd->halname);
-		r += hal_pin_float_newf(HAL_IN, &(brd->pins->req_arc_volt),
-						comp_id, "%s.req-arc-volt", brd->halname);
-		r += hal_pin_float_newf(HAL_IN, &(brd->pins->req_arc_volt_off),
-						comp_id, "%s.req-arc-volt-off", brd->halname);
-		r += hal_pin_float_newf(HAL_IN, &(brd->pins->cur_vel),
-						comp_id, "%s.cur-vel", brd->halname);
-		r += hal_pin_float_newf(HAL_IN, &(brd->pins->req_vel),
-						comp_id, "%s.req-vel", brd->halname);
-		r += hal_pin_float_newf(HAL_IN, &(brd->pins->z_pos_in),
-						comp_id, "%s.z-pos-in", brd->halname);
-		r += hal_pin_float_newf(HAL_OUT, &(brd->pins->z_pos_out),
-						comp_id, "%s.z-pos-out", brd->halname);
-		r += hal_pin_float_newf(HAL_OUT, &(brd->pins->z_pos_fb),
-						comp_id, "%s.z-pos-fb", brd->halname);
-		r += hal_pin_float_newf(HAL_IN, &(brd->pins->z_pos_fb_in),
-						comp_id, "%s.z-pos-fb-in", brd->halname);
-		r += hal_pin_float_newf(HAL_OUT, &(brd->pins->z_offset),
-						comp_id, "%s.z-offset", brd->halname);
-		r += hal_pin_float_newf(HAL_OUT, &(brd->pins->prev_err),
-						comp_id, "%s.prev-err", brd->halname);
+	// THC
+	r += hal_pin_float_newf(HAL_OUT, &(brd->pins->arc_volt),
+					comp_id, "%s.arc-volt", brd->halname);
+	r += hal_pin_float_newf(HAL_IN, &(brd->pins->req_arc_volt),
+					comp_id, "%s.req-arc-volt", brd->halname);
+	r += hal_pin_float_newf(HAL_IN, &(brd->pins->req_arc_volt_off),
+					comp_id, "%s.req-arc-volt-off", brd->halname);
+	r += hal_pin_float_newf(HAL_IN, &(brd->pins->cur_vel),
+					comp_id, "%s.cur-vel", brd->halname);
+	r += hal_pin_float_newf(HAL_IN, &(brd->pins->req_vel),
+					comp_id, "%s.req-vel", brd->halname);
+	r += hal_pin_float_newf(HAL_IN, &(brd->pins->z_pos_in),
+					comp_id, "%s.z-pos-in", brd->halname);
+	r += hal_pin_float_newf(HAL_OUT, &(brd->pins->z_pos_out),
+					comp_id, "%s.z-pos-out", brd->halname);
+	r += hal_pin_float_newf(HAL_OUT, &(brd->pins->z_pos_fb),
+					comp_id, "%s.z-pos-fb", brd->halname);
+	r += hal_pin_float_newf(HAL_IN, &(brd->pins->z_pos_fb_in),
+					comp_id, "%s.z-pos-fb-in", brd->halname);
+	r += hal_pin_float_newf(HAL_OUT, &(brd->pins->z_offset),
+					comp_id, "%s.z-offset", brd->halname);
+	r += hal_pin_float_newf(HAL_OUT, &(brd->pins->prev_err),
+					comp_id, "%s.prev-err", brd->halname);
 
-		// Status / Control
-		r += hal_pin_bit_newf(HAL_OUT, &(brd->pins->ready),
-						comp_id, "%s.ready", brd->halname);
-		r += hal_pin_bit_newf(HAL_OUT, &(brd->pins->active),
-						comp_id, "%s.active", brd->halname);
-		r += hal_pin_bit_newf(HAL_IN, &(brd->pins->enable),
-						comp_id, "%s.enable", brd->halname);
-		r += hal_pin_u32_newf(HAL_OUT, &(brd->pins->pkt_err_cnt),
-						comp_id, "%s.pkt-err-cnt", brd->halname);
-		r += hal_pin_u32_newf(HAL_OUT, &(brd->pins->pkt_overfl_cnt),
-						comp_id, "%s.pkt-overfl-cnt", brd->halname);
-		r += hal_pin_u32_newf(HAL_OUT, &(brd->pins->pkt_frerr_cnt),
-						comp_id, "%s.pkt-frerr-cnt", brd->halname);
-		r += hal_pin_u32_newf(HAL_OUT, &(brd->pins->pkt_byte_cnt),
-						comp_id, "%s.pkt-byte-cnt", brd->halname);
-		r += hal_pin_u32_newf(HAL_OUT, &(brd->pins->pkt_chkerr_cnt),
-						comp_id, "%s.pkt-chkerr-cnt", brd->halname);
-		r += hal_pin_bit_newf(HAL_IN, &(brd->pins->dry_run),
-						comp_id, "%s.dry-run", brd->halname);
+	// Status / Control
+	r += hal_pin_bit_newf(HAL_OUT, &(brd->pins->ready),
+					comp_id, "%s.ready", brd->halname);
+	r += hal_pin_bit_newf(HAL_OUT, &(brd->pins->active),
+					comp_id, "%s.active", brd->halname);
+	r += hal_pin_bit_newf(HAL_IN, &(brd->pins->enable),
+					comp_id, "%s.enable", brd->halname);
+	r += hal_pin_u32_newf(HAL_OUT, &(brd->pins->pkt_err_cnt),
+					comp_id, "%s.pkt-err-cnt", brd->halname);
+	r += hal_pin_u32_newf(HAL_OUT, &(brd->pins->pkt_overfl_cnt),
+					comp_id, "%s.pkt-overfl-cnt", brd->halname);
+	r += hal_pin_u32_newf(HAL_OUT, &(brd->pins->pkt_frerr_cnt),
+					comp_id, "%s.pkt-frerr-cnt", brd->halname);
+	r += hal_pin_u32_newf(HAL_OUT, &(brd->pins->pkt_byte_cnt),
+					comp_id, "%s.pkt-byte-cnt", brd->halname);
+	r += hal_pin_u32_newf(HAL_OUT, &(brd->pins->pkt_chkerr_cnt),
+					comp_id, "%s.pkt-chkerr-cnt", brd->halname);
+	r += hal_pin_bit_newf(HAL_IN, &(brd->pins->dry_run),
+					comp_id, "%s.dry-run", brd->halname);
 
-		if (r < 0) {
+	r += hal_pin_float_newf(HAL_RW, &(brd->pins->vel_tol),
+					comp_id, "%s.vel-tol", brd->halname);
+	r += hal_pin_float_newf(HAL_RW, &(brd->pins->volt_tol),
+					comp_id, "%s.volt-tol", brd->halname);
+	r += hal_pin_float_newf(HAL_RW, &(brd->pins->correction_kp),
+					comp_id, "%s.correction-kp", brd->halname);
+	r += hal_pin_float_newf(HAL_RW, &(brd->pins->correction_kd),
+					comp_id, "%s.correction-kd", brd->halname);
+	r += hal_pin_u32_newf(HAL_RW, &(brd->pins->range_sel),
+					comp_id, "%s.range-sel", brd->halname);
+	r += hal_pin_float_newf(HAL_RW, &(brd->pins->plasma_divisor),
+					comp_id, "%s.plasma-divisor", brd->halname);
+	r += hal_pin_bit_newf(HAL_RW, &(brd->pins->has_arc_ok),
+					comp_id, "%s.has-arc-ok", brd->halname);
+
+
+	if (r < 0) {
         BTINT_ERR(brd->halname, "error adding btint_thc pins, Aborting\n");
-        goto fail0;
-    }
-
-		// HAL Parameters
-		brd->params = hal_malloc(sizeof(btint_thc_params_t));
-		memset(brd->params, 0, sizeof(btint_thc_params_t));
-
-		r += hal_param_float_newf(HAL_RW, &(brd->params->vel_tol),
-						comp_id, "%s.vel-tol", brd->halname);
-		r += hal_param_float_newf(HAL_RW, &(brd->params->volt_tol),
-						comp_id, "%s.volt-tol", brd->halname);
-		r += hal_param_float_newf(HAL_RW, &(brd->params->correction_kp),
-						comp_id, "%s.correction-kp", brd->halname);
-		r += hal_param_float_newf(HAL_RW, &(brd->params->correction_kd),
-						comp_id, "%s.correction-kd", brd->halname);
-		r += hal_param_u32_newf(HAL_RW, &(brd->params->range_sel),
-						comp_id, "%s.range-sel", brd->halname);
-		r += hal_param_float_newf(HAL_RW, &(brd->params->plasma_divisor),
-						comp_id, "%s.plasma-divisor", brd->halname);
-		r += hal_param_bit_newf(HAL_RW, &(brd->params->has_arc_ok),
-						comp_id, "%s.has-arc-ok", brd->halname);
-
-		if (r < 0) {
-        BTINT_ERR(brd->halname, "error adding btint_thc parameters, Aborting\n");
         goto fail0;
     }
 
@@ -410,7 +402,7 @@ static int btint_thc_update(void *void_btint_thc, const hal_funct_args_t *fa)
 		return 0;
 	}
 
-	switch(brd->params->range_sel)
+	switch(*brd->params->range_sel)
 	{
 		case 10:
 			gainint = *brd->pins->gain10int;
@@ -477,7 +469,7 @@ static int btint_thc_update(void *void_btint_thc, const hal_funct_args_t *fa)
 	}
 
 	// The input pins
-	if(brd->params->has_arc_ok > 0) {
+	if(*brd->params->has_arc_ok > 0) {
 		btint_thc_read(brd, BTINT_THC_ADDR_INS, (void *)&temp, 4);
 		*brd->pins->arc_ok = ((temp & 0x2) > 0) ? 1 : 0;
 	}
@@ -489,7 +481,7 @@ static int btint_thc_update(void *void_btint_thc, const hal_funct_args_t *fa)
 	// and the divisor used on the plasma unit
 	btint_thc_read(brd, BTINT_THC_ADDR_ADCVAL, &temp, 4);
 	voltd = (hal_float_t)temp;
-	voltd = (voltd*voltd*voltd*gainx3 + voltd*voltd*gainx2 + voltd*gainx + gainint) * brd->params->plasma_divisor;
+	voltd = (voltd*voltd*voltd*gainx3 + voltd*voltd*gainx2 + voltd*gainx + gainint) * (*brd->params->plasma_divisor);
 	*brd->pins->arc_volt = (voltd > 0.0f) ? voltd : 0.0f;
 
 	// The status regs
@@ -509,11 +501,11 @@ static int btint_thc_update(void *void_btint_thc, const hal_funct_args_t *fa)
 	// correction_kp is treated as an upper limit that we are allowed to correct
 	// per period. We scale this down based on the differential from the previous
 	// cycle's error. Cap error calculation so the Z head can keep up..
-	velc = brd->params->correction_kp * 2;
+	velc = *brd->params->correction_kp * 2;
 
 	// If we are enabled, and the torch is on, we can calculate a valid shift
 	if(*brd->pins->enable > 0 && (*brd->pins->torch_on > 0)) {
-		hal_float_t minv = *brd->pins->req_vel* brd->params->vel_tol;
+		hal_float_t minv = *brd->pins->req_vel * (*brd->params->vel_tol);
 		int velok = (*brd->pins->cur_vel > 0.0f && *brd->pins->cur_vel >= minv) ? 1 : 0;
 		hal_float_t pdif = *brd->pins->z_pos_out - *brd->pins->z_pos_fb_in;
 		hal_float_t err = 0.0;
@@ -522,19 +514,19 @@ static int btint_thc_update(void *void_btint_thc, const hal_funct_args_t *fa)
 
 		if((*brd->pins->arc_ok > 0) && (velok > 0)) {
 			if(pdif < velc) {
-				if(((reqv + brd->params->volt_tol) < *brd->pins->arc_volt) ||
-			     ((reqv - brd->params->volt_tol) > *brd->pins->arc_volt)) {
+				if(((reqv + *brd->params->volt_tol) < *brd->pins->arc_volt) ||
+			     ((reqv - *brd->params->volt_tol) > *brd->pins->arc_volt)) {
 						*brd->pins->active = 1;
 						 // This is a dirty PD control...
 						err = (reqv - *brd->pins->arc_volt) * 0.1;
 						errd = err - *brd->pins->prev_err;
-						pdif = brd->params->correction_kp * err + brd->params->correction_kd * errd;
+						pdif = *brd->params->correction_kp * err + *brd->params->correction_kd * errd;
 
 						// Clamp
-						if(pdif > brd->params->correction_kp)
-							pdif = brd->params->correction_kp;
-						else if(pdif < -1.0 * brd->params->correction_kp)
-							pdif = -1.0 * brd->params->correction_kp;
+						if(pdif > *brd->params->correction_kp)
+							pdif = *brd->params->correction_kp;
+						else if(pdif < -1.0 * (*brd->params->correction_kp))
+							pdif = -1.0 * (*brd->params->correction_kp);
 
 						*brd->pins->z_offset += pdif;
 						*brd->pins->prev_err = err;
@@ -548,13 +540,13 @@ static int btint_thc_update(void *void_btint_thc, const hal_funct_args_t *fa)
 	else { // if the torch is off, or we aren't enabled, gracefully return to the controllers z height
 		*brd->pins->active = 0;
 		if(*brd->pins->z_offset > 0.0f) {
-			*brd->pins->z_offset -= brd->params->correction_kp;
+			*brd->pins->z_offset -= *brd->params->correction_kp;
 			// Clamp
 			if(*brd->pins->z_offset < 0.0f)
 				*brd->pins->z_offset = 0.0f;
 		}
 		else if (*brd->pins->z_offset < 0.0f){
-			*brd->pins->z_offset += brd->params->correction_kp;
+			*brd->pins->z_offset += *brd->params->correction_kp;
 			// Clamp
 			if(*brd->pins->z_offset > 0.0f)
 				*brd->pins->z_offset = 0.0f;

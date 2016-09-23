@@ -88,17 +88,14 @@ typedef struct {
     hal_float_t *gain300x;
     hal_float_t *gain300x2;
     hal_float_t *gain300x3;
+    hal_bit_t *has_arc_ok;
+    hal_u32_t *range_sel;
+    hal_float_t *plasma_divisor;
+    hal_float_t *vel_tol;
+    hal_float_t *volt_tol;
+    hal_float_t *correction_kp;
+    hal_float_t *correction_kd;
 } btint_thc_pins_t;
-
-typedef struct {
-    hal_bit_t has_arc_ok;
-    hal_u32_t range_sel;
-    hal_float_t plasma_divisor;
-    hal_float_t vel_tol;
-    hal_float_t volt_tol;
-    hal_float_t correction_kp;
-    hal_float_t correction_kd;
-} btint_thc_params_t;
 
 typedef struct {
     btint_thc_pins_t *pins;
