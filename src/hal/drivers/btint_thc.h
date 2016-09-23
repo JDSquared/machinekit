@@ -99,7 +99,6 @@ typedef struct {
 
 typedef struct {
     btint_thc_pins_t *pins;
-    btint_thc_params_t *params;
     int uio_fd;
     const char *name;
     char halname[32];
