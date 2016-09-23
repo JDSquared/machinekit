@@ -402,7 +402,7 @@ static int btint_thc_update(void *void_btint_thc, const hal_funct_args_t *fa)
 		return 0;
 	}
 
-	switch(*brd->params->range_sel)
+	switch(*brd->pins->range_sel)
 	{
 		case 10:
 			gainint = *brd->pins->gain10int;
@@ -469,7 +469,7 @@ static int btint_thc_update(void *void_btint_thc, const hal_funct_args_t *fa)
 	}
 
 	// The input pins
-	if(*brd->params->has_arc_ok > 0) {
+	if(*brd->pins->has_arc_ok > 0) {
 		btint_thc_read(brd, BTINT_THC_ADDR_INS, (void *)&temp, 4);
 		*brd->pins->arc_ok = ((temp & 0x2) > 0) ? 1 : 0;
 	}
@@ -481,7 +481,7 @@ static int btint_thc_update(void *void_btint_thc, const hal_funct_args_t *fa)
 	// and the divisor used on the plasma unit
 	btint_thc_read(brd, BTINT_THC_ADDR_ADCVAL, &temp, 4);
 	voltd = (hal_float_t)temp;
-	voltd = (voltd*voltd*voltd*gainx3 + voltd*voltd*gainx2 + voltd*gainx + gainint) * (*brd->params->plasma_divisor);
+	voltd = (voltd*voltd*voltd*gainx3 + voltd*voltd*gainx2 + voltd*gainx + gainint) * (*brd->pins->plasma_divisor);
 	*brd->pins->arc_volt = (voltd > 0.0f) ? voltd : 0.0f;
 
 	// The status regs
@@ -501,11 +501,11 @@ static int btint_thc_update(void *void_btint_thc, const hal_funct_args_t *fa)
 	// correction_kp is treated as an upper limit that we are allowed to correct
 	// per period. We scale this down based on the differential from the previous
 	// cycle's error. Cap error calculation so the Z head can keep up..
-	velc = *brd->params->correction_kp * 2;
+	velc = *brd->pins->correction_kp * 2;
 
 	// If we are enabled, and the torch is on, we can calculate a valid shift
 	if(*brd->pins->enable > 0 && (*brd->pins->torch_on > 0)) {
-		hal_float_t minv = *brd->pins->req_vel * (*brd->params->vel_tol);
+		hal_float_t minv = *brd->pins->req_vel * (*brd->pins->vel_tol);
 		int velok = (*brd->pins->cur_vel > 0.0f && *brd->pins->cur_vel >= minv) ? 1 : 0;
 		hal_float_t pdif = *brd->pins->z_pos_out - *brd->pins->z_pos_fb_in;
 		hal_float_t err = 0.0;
@@ -514,19 +514,19 @@ static int btint_thc_update(void *void_btint_thc, const hal_funct_args_t *fa)
 
 		if((*brd->pins->arc_ok > 0) && (velok > 0)) {
 			if(pdif < velc) {
-				if(((reqv + *brd->params->volt_tol) < *brd->pins->arc_volt) ||
-			     ((reqv - *brd->params->volt_tol) > *brd->pins->arc_volt)) {
+				if(((reqv + *brd->pins->volt_tol) < *brd->pins->arc_volt) ||
+			     ((reqv - *brd->pins->volt_tol) > *brd->pins->arc_volt)) {
 						*brd->pins->active = 1;
 						 // This is a dirty PD control...
 						err = (reqv - *brd->pins->arc_volt) * 0.1;
 						errd = err - *brd->pins->prev_err;
-						pdif = *brd->params->correction_kp * err + *brd->params->correction_kd * errd;
+						pdif = *brd->pins->correction_kp * err + *brd->pins->correction_kd * errd;
 
 						// Clamp
-						if(pdif > *brd->params->correction_kp)
-							pdif = *brd->params->correction_kp;
-						else if(pdif < -1.0 * (*brd->params->correction_kp))
-							pdif = -1.0 * (*brd->params->correction_kp);
+						if(pdif > *brd->pins->correction_kp)
+							pdif = *brd->pins->correction_kp;
+						else if(pdif < -1.0 * (*brd->pins->correction_kp))
+							pdif = -1.0 * (*brd->pins->correction_kp);
 
 						*brd->pins->z_offset += pdif;
 						*brd->pins->prev_err = err;
@@ -540,13 +540,13 @@ static int btint_thc_update(void *void_btint_thc, const hal_funct_args_t *fa)
 	else { // if the torch is off, or we aren't enabled, gracefully return to the controllers z height
 		*brd->pins->active = 0;
 		if(*brd->pins->z_offset > 0.0f) {
-			*brd->pins->z_offset -= *brd->params->correction_kp;
+			*brd->pins->z_offset -= *brd->pins->correction_kp;
 			// Clamp
 			if(*brd->pins->z_offset < 0.0f)
 				*brd->pins->z_offset = 0.0f;
 		}
 		else if (*brd->pins->z_offset < 0.0f){
-			*brd->pins->z_offset += *brd->params->correction_kp;
+			*brd->pins->z_offset += *brd->pins->correction_kp;
 			// Clamp
 			if(*brd->pins->z_offset > 0.0f)
 				*brd->pins->z_offset = 0.0f;
