@@ -202,6 +202,8 @@ static int btint_thc_register(btint_thc_t *brd, const char *name)
 					comp_id, "%s.arc-ok", brd->halname);
 	r += hal_pin_bit_newf(HAL_IN, &(brd->pins->torch_on),
 					comp_id, "%s.torch-on", brd->halname);
+	r += hal_pin_bit_newf(HAL_IN, &(brd->pins->torch_on_man),
+					comp_id, "%s.torch-on-man", brd->halname);
 
 	// THC
 	r += hal_pin_float_newf(HAL_OUT, &(brd->pins->arc_volt),
@@ -234,6 +236,8 @@ static int btint_thc_register(btint_thc_t *brd, const char *name)
 					comp_id, "%s.active", brd->halname);
 	r += hal_pin_bit_newf(HAL_IN, &(brd->pins->enable),
 					comp_id, "%s.enable", brd->halname);
+	r += hal_pin_bit_newf(HAL_IN, &(brd->pins->lockout),
+					comp_id, "%s.lockout", brd->halname);
 	r += hal_pin_u32_newf(HAL_OUT, &(brd->pins->pkt_err_cnt),
 					comp_id, "%s.pkt-err-cnt", brd->halname);
 	r += hal_pin_u32_newf(HAL_OUT, &(brd->pins->pkt_overfl_cnt),
@@ -436,7 +440,7 @@ static int btint_thc_update(void *void_btint_thc, const hal_funct_args_t *fa)
 	if(temp == 0) {
 		*brd->pins->ready = 0;
 		*brd->pins->z_pos_out = *brd->pins->z_pos_in;
-	    *brd->pins->arc_ok = 0;
+    *brd->pins->arc_ok = 0;
 		return 0;
 	}
 	else if(*brd->pins->ready == 0) {
@@ -492,7 +496,7 @@ static int btint_thc_update(void *void_btint_thc, const hal_funct_args_t *fa)
 	btint_thc_read(brd, BTINT_THC_ADDR_CHKERR, (void *)brd->pins->pkt_chkerr_cnt, 4);
 
 	// Write the output pins
-	temp = (*brd->pins->torch_on > 0) ? 1 : 0;
+	temp = ((*brd->pins->torch_on > 0) || (*brd->pins->torch_on_man > 0)) ? 1 : 0;
 	btint_thc_write(brd, BTINT_THC_ADDR_OUTS, (void *)&temp, 4);
 
 	// Do the THC
@@ -504,7 +508,7 @@ static int btint_thc_update(void *void_btint_thc, const hal_funct_args_t *fa)
 	velc = *brd->pins->correction_kp * 2;
 
 	// If we are enabled, and the torch is on, we can calculate a valid shift
-	if(*brd->pins->enable > 0 && (*brd->pins->torch_on > 0)) {
+	if((*brd->pins->enable > 0) && (*brd->pins->torch_on > 0) && (*brd->pins->lockout == 0)) {
 		hal_float_t minv = *brd->pins->req_vel * (*brd->pins->vel_tol);
 		int velok = (*brd->pins->cur_vel > 0.0f && *brd->pins->cur_vel >= minv) ? 1 : 0;
 		hal_float_t pdif = *brd->pins->z_pos_out - *brd->pins->z_pos_fb_in;

@@ -56,8 +56,10 @@
 typedef struct {
     hal_bit_t *arc_ok;
     hal_bit_t *torch_on;
+    hal_bit_t *torch_on_man;
     hal_bit_t *ready;
     hal_bit_t *enable;
+    hal_bit_t *lockout;
     hal_bit_t *active;
     hal_float_t *arc_volt;
     hal_float_t *req_arc_volt;
