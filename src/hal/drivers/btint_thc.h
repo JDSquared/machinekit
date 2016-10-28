@@ -22,6 +22,7 @@
 #define BTINT_THC_MAX_BOARDS    1
 #define BTINT_THC_HAL_NAME      "btint_thc"
 #define BTINT_THC_MAGIC         ((u32)0x12345678)
+#define BTINT_THC_GAINCNT       6
 
 #define BTINT_PRINT(mname, fmt, args...)  rtapi_print("/%s: " fmt, mname, ## args)
 
@@ -33,25 +34,20 @@
 #define BTINT_THC_ADDR_MAGIC    0x0000
 #define BTINT_THC_ADDR_CONTROL  0x0010
 #define BTINT_THC_ADDR_G10INT   0x0100
-#define BTINT_THC_ADDR_G10X     0x0104
-#define BTINT_THC_ADDR_G10X2    0x0108
-#define BTINT_THC_ADDR_G10X3    0x010C
-#define BTINT_THC_ADDR_G20INT   0x0110
-#define BTINT_THC_ADDR_G20X     0x0114
-#define BTINT_THC_ADDR_G20X2    0x0118
-#define BTINT_THC_ADDR_G20X3    0x011C
-#define BTINT_THC_ADDR_G300INT  0x0120
-#define BTINT_THC_ADDR_G300X    0x0124
-#define BTINT_THC_ADDR_G300X2   0x0128
-#define BTINT_THC_ADDR_G300X3   0x012C
-#define BTINT_THC_ADDR_OUTS     0x0200
-#define BTINT_THC_ADDR_INS      0x0300
-#define BTINT_THC_ADDR_ADCVAL   0x0400
-#define BTINT_THC_ADDR_ERRCNT   0x0500
-#define BTINT_THC_ADDR_OVERFL   0x0600
-#define BTINT_THC_ADDR_FRER     0x0604
-#define BTINT_THC_ADDR_BCNT     0x0608
-#define BTINT_THC_ADDR_CHKERR   0x060C
+#define BTINT_THC_ADDR_G20INT   0x0200
+#define BTINT_THC_ADDR_G300INT  0x0300
+#define BTINT_THC_ADDR_OUTS     0x0400
+#define BTINT_THC_ADDR_INS      0x0500
+#define BTINT_THC_ADDR_ADCVAL   0x0600
+#define BTINT_THC_ADDR_ERRCNT   0x0700
+#define BTINT_THC_ADDR_OVERFL   0x0800
+#define BTINT_THC_ADDR_FRER     0x0804
+#define BTINT_THC_ADDR_BCNT     0x0808
+#define BTINT_THC_ADDR_CHKERR   0x080C
+
+typedef struct {
+	hal_float_t *val;
+} btint_thc_gain_t;
 
 typedef struct {
     hal_bit_t *arc_ok;
@@ -78,18 +74,9 @@ typedef struct {
     hal_u32_t *pkt_frerr_cnt;
     hal_u32_t *pkt_byte_cnt;
     hal_u32_t *pkt_chkerr_cnt;
-    hal_float_t *gain10int;
-    hal_float_t *gain10x;
-    hal_float_t *gain10x2;
-    hal_float_t *gain10x3;
-    hal_float_t *gain20int;
-    hal_float_t *gain20x;
-    hal_float_t *gain20x2;
-    hal_float_t *gain20x3;
-    hal_float_t *gain300int;
-    hal_float_t *gain300x;
-    hal_float_t *gain300x2;
-    hal_float_t *gain300x3;
+    btint_thc_gain_t *gain10;    // Arrays of gains
+    btint_thc_gain_t *gain20;
+    btint_thc_gain_t *gain300;
     hal_bit_t *has_arc_ok;
     hal_u32_t *range_sel;
     hal_float_t *plasma_divisor;

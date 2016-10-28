@@ -147,7 +147,7 @@ static int btint_thc_mmap(btint_thc_t *brd) {
 static int btint_thc_register(btint_thc_t *brd, const char *name)
 {
     char fname[HAL_NAME_LEN + 1];
-		int r = 0;
+		int r = 0, i = 0;
 		u32 temp = 0;
 
 		memset(brd, 0,  sizeof(btint_thc_t));
@@ -171,31 +171,26 @@ static int btint_thc_register(btint_thc_t *brd, const char *name)
 	brd->pins = hal_malloc(sizeof(btint_thc_pins_t));
 	memset(brd->pins, 0, sizeof(btint_thc_pins_t));
 
-	// Gains
-	r = hal_pin_float_newf(HAL_OUT, &(brd->pins->gain10int),
-        comp_id, "%s.gain10int", brd->halname);
-	r = hal_pin_float_newf(HAL_OUT, &(brd->pins->gain10x),
-        comp_id, "%s.gain10x", brd->halname);
-	r = hal_pin_float_newf(HAL_OUT, &(brd->pins->gain10x2),
-					comp_id, "%s.gain10x2", brd->halname);
-	r = hal_pin_float_newf(HAL_OUT, &(brd->pins->gain10x3),
-        comp_id, "%s.gain10x3", brd->halname);
-	r = hal_pin_float_newf(HAL_OUT, &(brd->pins->gain20int),
-					comp_id, "%s.gain20int", brd->halname);
-	r = hal_pin_float_newf(HAL_OUT, &(brd->pins->gain20x),
-        comp_id, "%s.gain20x", brd->halname);
-	r = hal_pin_float_newf(HAL_OUT, &(brd->pins->gain20x2),
-					comp_id, "%s.gain20x2", brd->halname);
-	r = hal_pin_float_newf(HAL_OUT, &(brd->pins->gain20x3),
-        comp_id, "%s.gain20x3", brd->halname);
-	r = hal_pin_float_newf(HAL_OUT, &(brd->pins->gain300int),
-					comp_id, "%s.gain300int", brd->halname);
-	r = hal_pin_float_newf(HAL_OUT, &(brd->pins->gain300x),
-					comp_id, "%s.gain300x", brd->halname);
-	r = hal_pin_float_newf(HAL_OUT, &(brd->pins->gain300x2),
-					comp_id, "%s.gain300x2", brd->halname);
-	r = hal_pin_float_newf(HAL_OUT, &(brd->pins->gain300x3),
-					comp_id, "%s.gain300x3", brd->halname);
+	// 10V Gains
+	brd->pins->gain10 = hal_malloc(sizeof(btint_thc_gain_t) * BTINT_THC_GAINCNT);
+	memset(brd->pins->gain10, 0, sizeof(btint_thc_gain_t) * BTINT_THC_GAINCNT);
+
+    	// 20V Gains
+   	 brd->pins->gain20 = hal_malloc(sizeof(btint_thc_gain_t) * BTINT_THC_GAINCNT);
+	memset(brd->pins->gain20, 0, sizeof(btint_thc_gain_t) * BTINT_THC_GAINCNT);
+
+    	// 300V Gains
+    	brd->pins->gain300 = hal_malloc(sizeof(btint_thc_gain_t) * BTINT_THC_GAINCNT);
+	memset(brd->pins->gain300, 0, sizeof(btint_thc_gain_t) * BTINT_THC_GAINCNT);
+
+	for(i = 0; i < BTINT_THC_GAINCNT; i++) {
+		r = hal_pin_float_newf(HAL_OUT, &(brd->pins->gain10[i].val),
+                    	comp_id, "%s.gain10.%d", brd->halname, i);
+		r = hal_pin_float_newf(HAL_OUT, &(brd->pins->gain20[i].val),
+                    	comp_id, "%s.gain20.%d", brd->halname, i);
+		r = hal_pin_float_newf(HAL_OUT, &(brd->pins->gain300[i].val),
+                    	comp_id, "%s.gain300.%d", brd->halname, i);
+	}
 
 	// IO Pins
 	r += hal_pin_bit_newf(HAL_OUT, &(brd->pins->arc_ok),
@@ -272,7 +267,7 @@ static int btint_thc_register(btint_thc_t *brd, const char *name)
         goto fail0;
     }
 
-		// Export the update function
+	// Export the update function
     rtapi_snprintf(fname, sizeof(fname), "%s.update", brd->halname);
 
     hal_export_xfunct_args_t xfunct_args = {
@@ -289,9 +284,10 @@ static int btint_thc_register(btint_thc_t *brd, const char *name)
 				goto fail0;
     }
 
-		// Soft reset the controller
-		temp = 1;
-		btint_thc_write(brd, BTINT_THC_ADDR_CONTROL, (void *)&temp, 4);
+	// Soft reset the controller
+	temp = 1;
+	btint_thc_write(brd, BTINT_THC_ADDR_CONTROL, (void *)&temp, 4);
+
 fail0:
 	return r;
 }
@@ -365,10 +361,10 @@ static int locate_uio_device(btint_thc_t *brd, const char *name)
     int uio_id;
 
     for (uio_id = 0; uio_id < MAXUIOIDS; uio_id++) {
-			if (rtapi_fs_read(buf, MAXNAMELEN, "/sys/class/uio/uio%d/name", uio_id) < 0)
-			    continue;
-			if (strncmp(name, buf, strlen(name)) == 0)
-			    break;
+		if (rtapi_fs_read(buf, MAXNAMELEN, "/sys/class/uio/uio%d/name", uio_id) < 0)
+		    continue;
+		if (strncmp(name, buf, strlen(name)) == 0)
+		    break;
     }
     if (uio_id >= MAXUIOIDS)
 			return -1;
@@ -383,14 +379,13 @@ static int btint_thc_update(void *void_btint_thc, const hal_funct_args_t *fa)
 {
 	btint_thc_t *brd = void_btint_thc;
 	u32 temp = 0;
+	int i = 0;
 	float tempf = 0.0f;
-	hal_float_t voltd = 0.0;
+	hal_float_t voltx, volty, voltz, voltd;
 	hal_float_t velc;
-	hal_float_t gainint = 0.0f;
-	hal_float_t gainx = 0.0f;
-	hal_float_t gainx2 = 0.0f;
-	hal_float_t gainx3 = 0.0f;
+	btint_thc_gain_t *gain;
 	hal_float_t reqv;
+
 
 	// Lie to the control to avoid feedback errors
 	*brd->pins->z_pos_fb = *brd->pins->z_pos_in;
@@ -406,33 +401,6 @@ static int btint_thc_update(void *void_btint_thc, const hal_funct_args_t *fa)
 		return 0;
 	}
 
-	switch(*brd->pins->range_sel)
-	{
-		case 10:
-			gainint = *brd->pins->gain10int;
-			gainx = *brd->pins->gain10x;
-			gainx2 = *brd->pins->gain10x2;
-			gainx3 = *brd->pins->gain10x3;
-			break;
-		case 20:
-			gainint = *brd->pins->gain20int;
-			gainx = *brd->pins->gain20x;
-			gainx2 = *brd->pins->gain20x2;
-			gainx3 = *brd->pins->gain20x3;
-			break;
-		case 300:
-			gainint = *brd->pins->gain300int;
-			gainx = *brd->pins->gain300x;
-			gainx2 = *brd->pins->gain300x2;
-			gainx3 = *brd->pins->gain300x3;
-			break;
-		default:
-			gainint = 0.0f;
-			gainx = 0.0f;
-			gainx2 = 0.0f;
-			gainx3 = 0.0f;
-	}
-
 	// Update the status input
 	btint_thc_read(brd, BTINT_THC_ADDR_CONTROL, (void *)&temp, 4);
 	temp = ((temp & 0x10000) > 0) ? 1 : 0;
@@ -440,37 +408,28 @@ static int btint_thc_update(void *void_btint_thc, const hal_funct_args_t *fa)
 	if(temp == 0) {
 		*brd->pins->ready = 0;
 		*brd->pins->z_pos_out = *brd->pins->z_pos_in;
-    *brd->pins->arc_ok = 0;
+        	*brd->pins->arc_ok = 0;
 		return 0;
 	}
 	else if(*brd->pins->ready == 0) {
 		// Read the gains
-		btint_thc_read(brd, BTINT_THC_ADDR_G10INT, (void *)&tempf, 4);
-		*brd->pins->gain10int = tempf;
-		btint_thc_read(brd, BTINT_THC_ADDR_G10X, (void *)&tempf, 4);
-		*brd->pins->gain10x = tempf;
-		btint_thc_read(brd, BTINT_THC_ADDR_G10X2, (void *)&tempf, 4);
-		*brd->pins->gain10x2 = tempf;
-		btint_thc_read(brd, BTINT_THC_ADDR_G10X3, (void *)&tempf, 4);
-		*brd->pins->gain10x3 = tempf;
-		btint_thc_read(brd, BTINT_THC_ADDR_G20INT, (void *)&tempf, 4);
-		*brd->pins->gain20int = tempf;
-		btint_thc_read(brd, BTINT_THC_ADDR_G20X, (void *)&tempf, 4);
-		*brd->pins->gain20x = tempf;
-		btint_thc_read(brd, BTINT_THC_ADDR_G20X2, (void *)&tempf, 4);
-		*brd->pins->gain20x2 = tempf;
-		btint_thc_read(brd, BTINT_THC_ADDR_G20X3, (void *)&tempf, 4);
-		*brd->pins->gain20x3 = tempf;
-		btint_thc_read(brd, BTINT_THC_ADDR_G300INT, (void *)&tempf, 4);
-		*brd->pins->gain300int = tempf;
-		btint_thc_read(brd, BTINT_THC_ADDR_G300X, (void *)&tempf, 4);
-		*brd->pins->gain300x = tempf;
-		btint_thc_read(brd, BTINT_THC_ADDR_G300X2, (void *)&tempf, 4);
-		*brd->pins->gain300x2 = tempf;
-		btint_thc_read(brd, BTINT_THC_ADDR_G300X3, (void *)&tempf, 4);
-		*brd->pins->gain300x3 = tempf;
+		for(i = 0; i < BTINT_THC_GAINCNT; i++) {
+		    btint_thc_read(brd, (BTINT_THC_ADDR_G10INT + i * 4), (void *)&tempf, 4);
+		    *brd->pins->gain10[i].val = tempf;
+		    btint_thc_read(brd, (BTINT_THC_ADDR_G20INT + i * 4), (void *)&tempf, 4);
+		    *brd->pins->gain20[i].val = tempf;
+		    btint_thc_read(brd, (BTINT_THC_ADDR_G300INT + i * 4), (void *)&tempf, 4);
+		    *brd->pins->gain300[i].val = tempf;
+		}
 		*brd->pins->ready = 1;
 	}
+
+	// The status regs
+	btint_thc_read(brd, BTINT_THC_ADDR_ERRCNT, (void *)brd->pins->pkt_err_cnt, 4);
+	btint_thc_read(brd, BTINT_THC_ADDR_OVERFL, (void *)brd->pins->pkt_overfl_cnt, 4);
+	btint_thc_read(brd, BTINT_THC_ADDR_FRER, (void *)brd->pins->pkt_frerr_cnt, 4);
+	btint_thc_read(brd, BTINT_THC_ADDR_BCNT, (void *)brd->pins->pkt_byte_cnt, 4);
+	btint_thc_read(brd, BTINT_THC_ADDR_CHKERR, (void *)brd->pins->pkt_chkerr_cnt, 4);
 
 	// The input pins
 	if(*brd->pins->has_arc_ok > 0) {
@@ -481,23 +440,43 @@ static int btint_thc_update(void *void_btint_thc, const hal_funct_args_t *fa)
 		*brd->pins->arc_ok = 1;
 	}
 
-	// The arc voltage is found from a 3rd order fit based on the adc selected range,
-	// and the divisor used on the plasma unit
-	btint_thc_read(brd, BTINT_THC_ADDR_ADCVAL, &temp, 4);
-	voltd = (hal_float_t)temp;
-	voltd = (voltd*voltd*voltd*gainx3 + voltd*voltd*gainx2 + voltd*gainx + gainint) * (*brd->pins->plasma_divisor);
-	*brd->pins->arc_volt = (voltd > 0.0f) ? voltd : 0.0f;
-
-	// The status regs
-	btint_thc_read(brd, BTINT_THC_ADDR_ERRCNT, (void *)brd->pins->pkt_err_cnt, 4);
-	btint_thc_read(brd, BTINT_THC_ADDR_OVERFL, (void *)brd->pins->pkt_overfl_cnt, 4);
-	btint_thc_read(brd, BTINT_THC_ADDR_FRER, (void *)brd->pins->pkt_frerr_cnt, 4);
-	btint_thc_read(brd, BTINT_THC_ADDR_BCNT, (void *)brd->pins->pkt_byte_cnt, 4);
-	btint_thc_read(brd, BTINT_THC_ADDR_CHKERR, (void *)brd->pins->pkt_chkerr_cnt, 4);
-
 	// Write the output pins
 	temp = ((*brd->pins->torch_on > 0) || (*brd->pins->torch_on_man > 0)) ? 1 : 0;
 	btint_thc_write(brd, BTINT_THC_ADDR_OUTS, (void *)&temp, 4);
+
+    // Grab the proper gains
+	switch(*brd->pins->range_sel)
+	{
+		case 10:
+	            gain = brd->pins->gain10;
+		    break;
+		case 20:
+		    gain = brd->pins->gain20;
+		    break;
+		case 300:
+		    gain = brd->pins->gain300;
+		    break;
+		default:
+		    gain = 0;
+		    break;
+	}
+
+	// The arc voltage is found from a 5th order fit based on the adc selected range,
+	// and the divisor used on the plasma unit
+	if(gain == 0) {
+		*brd->pins->arc_volt = 0;
+	}
+	else {
+		btint_thc_read(brd, BTINT_THC_ADDR_ADCVAL, &temp, 4);
+		voltx = (hal_float_t)temp; // x
+		volty = voltx * voltx;     // x^2
+		voltz = volty * volty;     // x^4
+		voltd = (*brd->pins->plasma_divisor) *
+	        	((*gain[5].val * voltz * voltx) + (*gain[4].val * voltz) +
+	         	(*gain[3].val * volty * voltx) + (*gain[2].val * volty) +
+	         	(*gain[1].val * voltx) + *gain[0].val);
+		*brd->pins->arc_volt = (voltd > 0.0f) ? voltd : 0.0f;
+	}
 
 	// Do the THC
 	reqv = *brd->pins->req_arc_volt + *brd->pins->req_arc_volt_off;
