@@ -1566,9 +1566,10 @@ static int emcTaskCheckPreconditions(NMLmsg * cmd)
 	break;
 
     case EMC_MOTION_SET_DOUT_TYPE:
-	if (((EMC_MOTION_SET_DOUT *) cmd)->now) {
+	// Don't bust the planner to set an output immediately	
+	/*if (((EMC_MOTION_SET_DOUT *) cmd)->now) {
     	    return EMC_TASK_EXEC_WAITING_FOR_MOTION;
-	}
+	}*/
 	return EMC_TASK_EXEC_DONE;
 	break;
 
