@@ -1057,6 +1057,8 @@ static int emcTaskPlan(void)
 		case EMC_COOLANT_FLOOD_OFF_TYPE:
 		case EMC_LUBE_ON_TYPE:
 		case EMC_LUBE_OFF_TYPE:
+	    case EMC_MOTION_SET_DOUT_TYPE:
+	    case EMC_MOTION_SET_AOUT_TYPE:
 		case EMC_TASK_SET_MODE_TYPE:
 		case EMC_TASK_SET_STATE_TYPE:
 		case EMC_TASK_ABORT_TYPE:
@@ -1154,12 +1156,14 @@ static int emcTaskPlan(void)
 		case EMC_AUX_INPUT_WAIT_TYPE:
 		case EMC_TRAJ_RIGID_TAP_TYPE:
 		case EMC_SET_DEBUG_TYPE:
-                case EMC_COOLANT_MIST_ON_TYPE:
-                case EMC_COOLANT_MIST_OFF_TYPE:
-                case EMC_COOLANT_FLOOD_ON_TYPE:
-                case EMC_COOLANT_FLOOD_OFF_TYPE:
-                case EMC_LUBE_ON_TYPE:
-                case EMC_LUBE_OFF_TYPE:
+        case EMC_COOLANT_MIST_ON_TYPE:
+        case EMC_COOLANT_MIST_OFF_TYPE:
+        case EMC_COOLANT_FLOOD_ON_TYPE:
+        case EMC_COOLANT_FLOOD_OFF_TYPE:
+        case EMC_LUBE_ON_TYPE:
+        case EMC_LUBE_OFF_TYPE:
+	    case EMC_MOTION_SET_DOUT_TYPE:
+	    case EMC_MOTION_SET_AOUT_TYPE:
 		    retval = emcTaskIssueCommand(emcCommand);
 		    return retval;
 		    break;
@@ -1221,6 +1225,8 @@ static int emcTaskPlan(void)
 		case EMC_COOLANT_MIST_OFF_TYPE:
 		case EMC_COOLANT_FLOOD_ON_TYPE:
 		case EMC_COOLANT_FLOOD_OFF_TYPE:
+	    case EMC_MOTION_SET_DOUT_TYPE:
+	    case EMC_MOTION_SET_AOUT_TYPE:
 		case EMC_LUBE_ON_TYPE:
 		case EMC_LUBE_OFF_TYPE:
 		case EMC_TASK_SET_MODE_TYPE:
@@ -1305,14 +1311,16 @@ static int emcTaskPlan(void)
 		case EMC_TRAJ_CLEAR_PROBE_TRIPPED_FLAG_TYPE:
 		case EMC_TRAJ_PROBE_TYPE:
 		case EMC_AUX_INPUT_WAIT_TYPE:
-	        case EMC_TRAJ_RIGID_TAP_TYPE:
+        case EMC_TRAJ_RIGID_TAP_TYPE:
 		case EMC_SET_DEBUG_TYPE:
-                case EMC_COOLANT_MIST_ON_TYPE:
-                case EMC_COOLANT_MIST_OFF_TYPE:
-                case EMC_COOLANT_FLOOD_ON_TYPE:
-                case EMC_COOLANT_FLOOD_OFF_TYPE:
-                case EMC_LUBE_ON_TYPE:
-                case EMC_LUBE_OFF_TYPE:
+        case EMC_COOLANT_MIST_ON_TYPE:
+        case EMC_COOLANT_MIST_OFF_TYPE:
+        case EMC_COOLANT_FLOOD_ON_TYPE:
+        case EMC_COOLANT_FLOOD_OFF_TYPE:
+        case EMC_LUBE_ON_TYPE:
+        case EMC_LUBE_OFF_TYPE:
+	    case EMC_MOTION_SET_DOUT_TYPE:
+	    case EMC_MOTION_SET_AOUT_TYPE:
 		    retval = emcTaskIssueCommand(emcCommand);
 		    break;
 
@@ -1566,10 +1574,9 @@ static int emcTaskCheckPreconditions(NMLmsg * cmd)
 	break;
 
     case EMC_MOTION_SET_DOUT_TYPE:
-	// Don't bust the planner to set an output immediately	
-	/*if (((EMC_MOTION_SET_DOUT *) cmd)->now) {
+	if (((EMC_MOTION_SET_DOUT *) cmd)->now) {
     	    return EMC_TASK_EXEC_WAITING_FOR_MOTION;
-	}*/
+	}
 	return EMC_TASK_EXEC_DONE;
 	break;
 

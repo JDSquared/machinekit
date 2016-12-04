@@ -240,6 +240,32 @@ void enqueue_SET_SPINDLE_SPEED(double speed) {
     qc().push_back(q);
 }
 
+void enqueue_SET_AUX_OUTPUT_BIT(int index) {
+    if(qc().empty()) {
+        if(debug_qc) printf("immediate aux output on\n");
+        SET_AUX_OUTPUT_BIT(index);
+        return;
+    }
+    queued_canon q;
+    q.type = QSET_AUX_OUTPUT;
+	q.data.mcommand.p_number = index;
+    if(debug_qc) printf("enqueue aux output on\n");
+    qc().push_back(q);
+}
+
+void enqueue_CLEAR_AUX_OUTPUT_BIT(int index) {
+    if(qc().empty()) {
+        if(debug_qc) printf("immediate aux output off\n");
+        CLEAR_AUX_OUTPUT_BIT(index);
+        return;
+    }
+    queued_canon q;
+    q.type = QCLEAR_AUX_OUTPUT;
+	q.data.mcommand.p_number = index;
+    if(debug_qc) printf("enqueue aux output off\n");
+    qc().push_back(q);
+}
+
 void enqueue_COMMENT(const char *c) {
     if(qc().empty()) {
         if(debug_qc) printf("immediate comment \"%s\"\n", c);
@@ -521,6 +547,14 @@ void dequeue_canons(setup_pointer settings) {
         case QSET_SPINDLE_SPEED:
             if(debug_qc) printf("issuing set spindle speed\n");
             SET_SPINDLE_SPEED(q.data.set_spindle_speed.speed);
+            break;
+        case QSET_AUX_OUTPUT:
+            if(debug_qc) printf("issuing set aux output\n");
+            SET_AUX_OUTPUT_BIT((int)q.data.mcommand.p_number);
+            break;
+        case QCLEAR_AUX_OUTPUT:
+            if(debug_qc) printf("issuing clear aux output\n");
+            CLEAR_AUX_OUTPUT_BIT((int)q.data.mcommand.p_number);
             break;
         case QCOMMENT:
             if(debug_qc) printf("issuing comment\n");
