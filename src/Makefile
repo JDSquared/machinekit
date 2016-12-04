@@ -1293,6 +1293,10 @@ ifeq ($(BUILD_SYS),user-dso)
 obj-$(CONFIG_HM2_SOC_OL) += hm2_soc_ol.o
 hm2_soc_ol-objs := hal/drivers/mesa-hostmot2/hm2_soc_ol.o
 endif
+ifeq ($(BUILD_SYS),user-dso)
+obj-$(CONFIG_BTINT_THC) += btint_thc.o
+btint_thc-objs := hal/drivers/btint_thc.o
+endif
 endif
 
 ifdef TARGET_PLATFORM_BEAGLEBONE
@@ -1711,6 +1715,7 @@ ifdef TARGET_PLATFORM_SOCFPGA
 ifeq ($(BUILD_SYS),user-dso)
 $(RTLIBDIR)/hostmot2$(MODULE_EXT): $(addprefix $(OBJDIR)/,$(hostmot2-objs))
 $(RTLIBDIR)/hm2_soc_ol$(MODULE_EXT): $(addprefix $(OBJDIR)/,$(hm2_soc_ol-objs))
+$(RTLIBDIR)/btint_thc$(MODULE_EXT): $(addprefix $(OBJDIR)/,$(btint_thc-objs))
 endif
 endif
 
