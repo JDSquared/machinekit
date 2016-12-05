@@ -1,6 +1,8 @@
 //
 //    Copyright (C) 2016 Devin Hughes, JD Squared
 //
+//	  Derived from the combined work in hm2_soc_ol	  
+//
 //    This program is free software; you can redistribute it and/or modify
 //    it under the terms of the GNU General Public License as published by
 //    the Free Software Foundation; either version 2 of the License, or
@@ -213,6 +215,8 @@ static int btint_thc_register(btint_thc_t *brd, const char *name)
 					comp_id, "%s.req-vel", brd->halname);
 	r += hal_pin_float_newf(HAL_IN, &(brd->pins->z_pos_in),
 					comp_id, "%s.z-pos-in", brd->halname);
+	r += hal_pin_float_newf(HAL_IN, &(brd->pins->z_work),
+					comp_id, "%s.z-work", brd->halname);
 	r += hal_pin_float_newf(HAL_OUT, &(brd->pins->z_pos_out),
 					comp_id, "%s.z-pos-out", brd->halname);
 	r += hal_pin_float_newf(HAL_OUT, &(brd->pins->z_pos_fb),
@@ -390,25 +394,14 @@ static int btint_thc_update(void *void_btint_thc, const hal_funct_args_t *fa)
 	// Lie to the control to avoid feedback errors
 	*brd->pins->z_pos_fb = *brd->pins->z_pos_in;
 
-	if(*brd->pins->dry_run > 0) {
-		// Force the torch off, but don't change the hal pin
-		temp = 0;
-		btint_thc_write(brd, BTINT_THC_ADDR_OUTS, (void *)&temp, 4);
-
-		// A dry run lies about the arc_ok
-		*brd->pins->arc_ok = 1;
-		*brd->pins->z_pos_out = *brd->pins->z_pos_in;
-		return 0;
-	}
-
-	// Update the status input
+	// Update the status input - status tells us if we are connected
 	btint_thc_read(brd, BTINT_THC_ADDR_CONTROL, (void *)&temp, 4);
 	temp = ((temp & 0x10000) > 0) ? 1 : 0;
 
 	if(temp == 0) {
 		*brd->pins->ready = 0;
 		*brd->pins->z_pos_out = *brd->pins->z_pos_in;
-        	*brd->pins->arc_ok = 0;
+        *brd->pins->arc_ok = 0;
 		return 0;
 	}
 	else if(*brd->pins->ready == 0) {
@@ -431,6 +424,22 @@ static int btint_thc_update(void *void_btint_thc, const hal_funct_args_t *fa)
 	btint_thc_read(brd, BTINT_THC_ADDR_BCNT, (void *)brd->pins->pkt_byte_cnt, 4);
 	btint_thc_read(brd, BTINT_THC_ADDR_CHKERR, (void *)brd->pins->pkt_chkerr_cnt, 4);
 
+	// Dry run doesn't interact with the hardware directly
+	if(*brd->pins->dry_run > 0) {
+		// Force the torch off, but don't change the hal pin
+		temp = 0;
+		btint_thc_write(brd, BTINT_THC_ADDR_OUTS, (void *)&temp, 4);
+
+		// A dry run lies about the arc_ok
+		*brd->pins->arc_ok = 1;
+
+		// If dry_run is turned on on the fly, we don't immediately remove
+		// the height offset
+		goto SKIP_ARC;
+	}
+
+	// Check for handshake pin signaling new/ready-for-new data
+
 	// The input pins
 	if(*brd->pins->has_arc_ok > 0) {
 		btint_thc_read(brd, BTINT_THC_ADDR_INS, (void *)&temp, 4);
@@ -448,7 +457,7 @@ static int btint_thc_update(void *void_btint_thc, const hal_funct_args_t *fa)
 	switch(*brd->pins->range_sel)
 	{
 		case 10:
-	            gain = brd->pins->gain10;
+			gain = brd->pins->gain10;
 		    break;
 		case 20:
 		    gain = brd->pins->gain20;
@@ -486,14 +495,21 @@ static int btint_thc_update(void *void_btint_thc, const hal_funct_args_t *fa)
 	// cycle's error. Cap error calculation so the Z head can keep up..
 	velc = *brd->pins->correction_kp * 2;
 
+SKIP_ARC:
 	// If we are enabled, and the torch is on, we can calculate a valid shift
-	if((*brd->pins->enable > 0) && (*brd->pins->torch_on > 0) && (*brd->pins->lockout == 0)) {
+	if((*brd->pins->enable > 0) && (*brd->pins->torch_on > 0) && 
+		(*brd->pins->lockout == 0) &&
+		(*brd->pins->dry_run == 0)) {
 		hal_float_t minv = *brd->pins->req_vel * (*brd->pins->vel_tol);
 		int velok = (*brd->pins->cur_vel > 0.0f && *brd->pins->cur_vel >= minv) ? 1 : 0;
 		hal_float_t pdif = *brd->pins->z_pos_out - *brd->pins->z_pos_fb_in;
 		hal_float_t err = 0.0;
 		hal_float_t errd = 0.0;
 		pdif = (pdif < 0.0) ? -1.0 * pdif : pdif;
+
+		// Zero offset we save the work plane
+		if(*brd->pins->z_offset == 0.0)
+			*brd->pins->z_work = *brd->pins->z_pos_in;
 
 		if((*brd->pins->arc_ok > 0) && (velok > 0)) {
 			if(pdif < velc) {
@@ -520,19 +536,28 @@ static int btint_thc_update(void *void_btint_thc, const hal_funct_args_t *fa)
 			}
 		}
 	}
-	else { // if the torch is off, or we aren't enabled, gracefully return to the controllers z height
+	else { 
 		*brd->pins->active = 0;
-		if(*brd->pins->z_offset > 0.0f) {
-			*brd->pins->z_offset -= *brd->pins->correction_kp;
-			// Clamp
-			if(*brd->pins->z_offset < 0.0f)
-				*brd->pins->z_offset = 0.0f;
-		}
-		else if (*brd->pins->z_offset < 0.0f){
-			*brd->pins->z_offset += *brd->pins->correction_kp;
-			// Clamp
-			if(*brd->pins->z_offset > 0.0f)
-				*brd->pins->z_offset = 0.0f;
+		// If the torch is turned off, or THC is disabled, we hold the offset
+		// until a new commanded z position is provided. During that move
+		// we eliminate the offset		
+		if(*brd->pins->z_work != *brd->pins->z_pos_in) {
+			if(*brd->pins->z_offset > 0.0f) {
+				*brd->pins->z_offset -= *brd->pins->correction_kp;
+				// Clamp
+				if(*brd->pins->z_offset < 0.0f)
+					*brd->pins->z_offset = 0.0f;
+			}
+			else if (*brd->pins->z_offset < 0.0f){
+				*brd->pins->z_offset += *brd->pins->correction_kp;
+				// Clamp
+				if(*brd->pins->z_offset > 0.0f)
+					*brd->pins->z_offset = 0.0f;
+			}
+			else {
+				// no offset, save the work plane
+				*brd->pins->z_work = *brd->pins->z_pos_in;			
+			}
 		}
 	}
 
