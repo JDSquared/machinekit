@@ -384,6 +384,7 @@ int emcmotCommandHandler(void *arg, const hal_funct_args_t *fa)
     long period = fa_period(fa);
     int joint_num;
     int n;
+	int i;
     emcmot_joint_t *joint;
     double tmp1;
     emcmot_comp_entry_t *comp_entry;
@@ -473,6 +474,12 @@ int emcmotCommandHandler(void *arg, const hal_funct_args_t *fa)
 		SET_JOINT_ERROR_FLAG(joint, 0);
 		SET_JOINT_FAULT_FLAG(joint, 0);
 	    }
+		
+		// Reset all dio to off
+		for(i = 0; i < num_dio; ++i) {
+			emcmotDioWrite(i, 0); 		
+		}
+
 	    emcmotStatus->pause_state =  *(emcmot_hal_data->pause_state) = PS_RUNNING;
 	    emcmotStatus->resuming = 0;
 
