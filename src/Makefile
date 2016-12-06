@@ -1297,6 +1297,9 @@ ifeq ($(BUILD_SYS),user-dso)
 obj-$(CONFIG_BTINT_THC) += btint_thc.o
 btint_thc-objs := hal/drivers/btint_thc.o
 endif
+obj-$(CONFIG_JD2_IOEXPANDER) += jd2_ioexpander.o
+jd2_ioexpander-objs := hal/drivers/jd2_ioexpander.o
+endif
 endif
 
 ifdef TARGET_PLATFORM_BEAGLEBONE
@@ -1716,6 +1719,7 @@ ifeq ($(BUILD_SYS),user-dso)
 $(RTLIBDIR)/hostmot2$(MODULE_EXT): $(addprefix $(OBJDIR)/,$(hostmot2-objs))
 $(RTLIBDIR)/hm2_soc_ol$(MODULE_EXT): $(addprefix $(OBJDIR)/,$(hm2_soc_ol-objs))
 $(RTLIBDIR)/btint_thc$(MODULE_EXT): $(addprefix $(OBJDIR)/,$(btint_thc-objs))
+$(RTLIBDIR)/jd2_ioexpander$(MODULE_EXT): $(addprefix $(OBJDIR)/,$(jd2_ioexpander-objs))
 endif
 endif
 
