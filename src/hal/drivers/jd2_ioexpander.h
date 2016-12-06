@@ -44,9 +44,13 @@
 #define JD2_IOEXP_LSR_IND		8
 
 typedef struct {
+	hal_bit_t *val;
+} jd2_iopin_t;
+
+typedef struct {
     hal_bit_t *ready;
-	hal_bit_t *outputs;
-	hal_bit_t *inputs;
+	jd2_iopin_t *outputs;
+	jd2_iopin_t *inputs;
 	hal_bit_t *laser_en;
 	hal_bit_t *dry_run;
     hal_u32_t *pkt_err_cnt;
@@ -57,7 +61,7 @@ typedef struct {
 } jd2_ioexp_pins_t;
 
 typedef struct {
-    JD2_IOEXP_pins_t *pins;
+    jd2_ioexp_pins_t *pins;
     int uio_fd;
     const char *name;
     char halname[32];

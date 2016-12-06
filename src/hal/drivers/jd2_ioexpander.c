@@ -174,8 +174,8 @@ static int jd2_ioexp_register(jd2_ioexp_t *brd, const char *name)
 	memset(brd->pins, 0, sizeof(jd2_ioexp_pins_t));
 
 	// Output pins
-	brd->pins->outputs = hal_malloc(sizeof(hal_bit_t) * (JD2_IOEXP_NUM_OUTS - 1));
-	memset(brd->pins->outputs, 0, sizeof(hal_bit_t) * (JD2_IOEXP_NUM_OUTS - 1));
+	brd->pins->outputs = hal_malloc(sizeof(jd2_ioexp_pins_t) * (JD2_IOEXP_NUM_OUTS - 1));
+	memset(brd->pins->outputs, 0, sizeof(jd2_ioexp_pins_t) * (JD2_IOEXP_NUM_OUTS - 1));
 	
 	// Laser counts as one output
 	for(i = 0; i < JD2_IOEXP_NUM_OUTS - 1; i++) {
@@ -188,8 +188,8 @@ static int jd2_ioexp_register(jd2_ioexp_t *brd, const char *name)
 					comp_id, "%s.laser-en", brd->halname);
 
 	// Input pins
-	brd->pins->outputs = hal_malloc(sizeof(hal_bit_t) * JD2_IOEXP_NUM_INS);
-	memset(brd->pins->outputs, 0, sizeof(hal_bit_t) * JD2_IOEXP_NUM_INS);
+	brd->pins->inputs = hal_malloc(sizeof(jd2_ioexp_pins_t) * JD2_IOEXP_NUM_INS);
+	memset(brd->pins->inputs, 0, sizeof(jd2_ioexp_pins_t) * JD2_IOEXP_NUM_INS);
 	
 	for(i = 0; i < JD2_IOEXP_NUM_INS; i++) {
 		r += hal_pin_bit_newf(HAL_IN, &(brd->pins->inputs[i].val),
@@ -355,7 +355,7 @@ static int jd2_ioexp_update(void *void_jd2_ioexp, const hal_funct_args_t *fa)
 	// The input pins
 	jd2_ioexp_read(brd, JD2_IOEXP_ADDR_INS, (void *)&temp, 4);
 	for(i = 0; i < JD2_IOEXP_NUM_INS; ++i) {
-		*brd->pins->inputs[i] = (temp >> i) & 0x1;
+		*brd->pins->inputs[i].val = (temp >> i) & 0x1;
 	}
 
 	// Write the output pins
@@ -373,7 +373,7 @@ static int jd2_ioexp_update(void *void_jd2_ioexp, const hal_funct_args_t *fa)
 				temp |= *brd->pins->laser_en << i;
 			}
 			else {
-				temp |= *brd->pins->outputs[i] << i);
+				temp |= *brd->pins->outputs[i].val << i;
 			}
 		}
 
