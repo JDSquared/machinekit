@@ -51,18 +51,18 @@
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Devin Hughes");
-MODULE_DESCRIPTION("Driver for JD2 torch interface board");
-MODULE_SUPPORTED_DEVICE("JD2 btint");
+MODULE_DESCRIPTION("Driver for JD2 ioexpander board");
+MODULE_SUPPORTED_DEVICE("JD2 ioexpander");
 
 static char *config[JD2_IOEXP_MAX_BOARDS];
 RTAPI_MP_ARRAY_STRING(config, JD2_IOEXP_MAX_BOARDS,
-		      "config string for the btint boards")
+		      "config string for the ioexpander boards")
 
 static int debug;
 RTAPI_MP_INT(debug, "turn on extra debug output");
 
-static char *name = "btint-axi0";
-RTAPI_MP_STRING(name, "logical device name, default btint-axi0");
+static char *name = "jd2_ioexp_axi1";
+RTAPI_MP_STRING(name, "logical device name, default jd2_ioexp_axi1");
 
 static int comp_id;
 static jd2_ioexp_t board[JD2_IOEXP_MAX_BOARDS];
@@ -174,25 +174,25 @@ static int jd2_ioexp_register(jd2_ioexp_t *brd, const char *name)
 	memset(brd->pins, 0, sizeof(jd2_ioexp_pins_t));
 
 	// Output pins
-	brd->pins->outputs = hal_malloc(sizeof(jd2_ioexp_pins_t) * (JD2_IOEXP_NUM_OUTS - 1));
-	memset(brd->pins->outputs, 0, sizeof(jd2_ioexp_pins_t) * (JD2_IOEXP_NUM_OUTS - 1));
+	brd->pins->outputs = hal_malloc(sizeof(jd2_iopin_t) * (JD2_IOEXP_NUM_OUTS - 1));
+	memset(brd->pins->outputs, 0, sizeof(jd2_iopin_t) * (JD2_IOEXP_NUM_OUTS - 1));
 	
 	// Laser counts as one output
 	for(i = 0; i < JD2_IOEXP_NUM_OUTS - 1; i++) {
-		r += hal_pin_bit_newf(HAL_OUT, &(brd->pins->outputs[i].val),
+		r += hal_pin_bit_newf(HAL_IN, &(brd->pins->outputs[i].val),
                     	comp_id, "%s.output.%d", brd->halname, i);
 	}
 
 	// Laser
-	r += hal_pin_bit_newf(HAL_OUT, &(brd->pins->laser_en),
+	r += hal_pin_bit_newf(HAL_IN, &(brd->pins->laser_en),
 					comp_id, "%s.laser-en", brd->halname);
 
 	// Input pins
-	brd->pins->inputs = hal_malloc(sizeof(jd2_ioexp_pins_t) * JD2_IOEXP_NUM_INS);
-	memset(brd->pins->inputs, 0, sizeof(jd2_ioexp_pins_t) * JD2_IOEXP_NUM_INS);
+	brd->pins->inputs = hal_malloc(sizeof(jd2_iopin_t) * JD2_IOEXP_NUM_INS);
+	memset(brd->pins->inputs, 0, sizeof(jd2_iopin_t) * JD2_IOEXP_NUM_INS);
 	
 	for(i = 0; i < JD2_IOEXP_NUM_INS; i++) {
-		r += hal_pin_bit_newf(HAL_IN, &(brd->pins->inputs[i].val),
+		r += hal_pin_bit_newf(HAL_OUT, &(brd->pins->inputs[i].val),
                     	comp_id, "%s.input.%d", brd->halname, i);
 	}
 
@@ -278,6 +278,8 @@ int rtapi_app_main(void) {
         r = jd2_ioexp_munmap(brd);
         return r;
     }
+
+	IOEXP_DBG(brd->name, "jd2_ioexp ready");
 
     hal_ready(comp_id);
     return 0;
