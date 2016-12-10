@@ -33,7 +33,7 @@
 #include "hal.h"
 #include "hal_priv.h"
 #include "hal/lib/config_module.h"
-#include "jd2_ioexpander.h"
+#include "jd2_ioexp.h"
 
 #include <fcntl.h>
 #include <sys/mman.h>
