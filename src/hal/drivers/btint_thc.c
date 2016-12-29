@@ -215,6 +215,12 @@ static int btint_thc_register(btint_thc_t *brd, const char *name)
 					comp_id, "%s.req-vel", brd->halname);
 	r += hal_pin_float_newf(HAL_IN, &(brd->pins->z_pos_in),
 					comp_id, "%s.z-pos-in", brd->halname);
+	r += hal_pin_float_newf(HAL_IN, &(brd->pins->z_joint_pos_in),
+					comp_id, "%s.z-joint-pos-in", brd->halname);
+	r += hal_param_float_newf(HAL_RW, &(brd->pins->z_max),
+					comp_id, "%s.z-max", brd->halname);
+	r += hal_param_float_newf(HAL_RW, &(brd->pins->z_min),
+					comp_id, "%s.z-min", brd->halname);
 	r += hal_pin_float_newf(HAL_IN, &(brd->pins->z_work),
 					comp_id, "%s.z-work", brd->halname);
 	r += hal_pin_float_newf(HAL_OUT, &(brd->pins->z_pos_out),
@@ -390,7 +396,6 @@ static int btint_thc_update(void *void_btint_thc, const hal_funct_args_t *fa)
 	btint_thc_gain_t *gain;
 	hal_float_t reqv;
 
-
 	// Lie to the control to avoid feedback errors
 	*brd->pins->z_pos_fb = *brd->pins->z_pos_in;
 
@@ -521,11 +526,20 @@ SKIP_ARC:
 						errd = err - *brd->pins->prev_err;
 						pdif = *brd->pins->correction_kp * err + *brd->pins->correction_kd * errd;
 
-						// Clamp
+						// Clamp step size
 						if(pdif > *brd->pins->correction_kp)
 							pdif = *brd->pins->correction_kp;
 						else if(pdif < -1.0 * (*brd->pins->correction_kp))
 							pdif = -1.0 * (*brd->pins->correction_kp);
+
+						// Clamp the total offset
+						hal_float_t zjoint = *brd->pins->z_joint_pos_in + *brd->pins->z_offset;
+						if(zjoint > brd->pins->z_max){
+							*brd->pins->z_offset = brd->pins->z_max - *brd->pins->z_joint_pos_in;
+						}	
+						else if(zjoint < brd->pins->z_min) {
+							*brd->pins->z_offset = brd->pins->z_min - *brd->pins->z_joint_pos_in;
+						}
 
 						*brd->pins->z_offset += pdif;
 						*brd->pins->prev_err = err;
@@ -563,5 +577,5 @@ SKIP_ARC:
 
 	*brd->pins->z_pos_out = *brd->pins->z_pos_in + *brd->pins->z_offset;
 
-  return 0;
+	return 0;
 }

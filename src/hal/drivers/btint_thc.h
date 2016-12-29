@@ -62,6 +62,9 @@ typedef struct {
     hal_float_t *req_arc_volt_off;
     hal_float_t *z_pos_out;
     hal_float_t *z_pos_in;
+	hal_float_t *z_joint_pos_in;
+	hal_float_t z_max;
+	hal_float_t z_min;
 	hal_float_t *z_work;
     hal_float_t *z_pos_fb;
     hal_float_t *z_pos_fb_in;
