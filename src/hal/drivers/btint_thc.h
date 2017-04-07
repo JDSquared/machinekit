@@ -17,12 +17,11 @@
 //    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
 //
 
-#define BTINT_THC_VERSION       "0.1"
+#define BTINT_THC_VERSION       "2.0"
 
 #define BTINT_THC_MAX_BOARDS    1
 #define BTINT_THC_HAL_NAME      "btint_thc"
 #define BTINT_THC_MAGIC         ((u32)0x12345678)
-#define BTINT_THC_GAINCNT       6
 
 #define BTINT_PRINT(mname, fmt, args...)  rtapi_print("/%s: " fmt, mname, ## args)
 
@@ -31,28 +30,35 @@
 #define BTINT_INFO(mname, fmt, args...)   rtapi_print_msg(RTAPI_MSG_INFO, "/%s: " fmt, mname, ## args)
 #define BTINT_DBG(mname, fmt, args...)    rtapi_print_msg(RTAPI_MSG_DBG,  "/%s: " fmt, mname, ## args)
 
-#define BTINT_THC_ADDR_MAGIC    0x0000
-#define BTINT_THC_ADDR_CONTROL  0x0010
-#define BTINT_THC_ADDR_G10INT   0x0100
-#define BTINT_THC_ADDR_G20INT   0x0200
-#define BTINT_THC_ADDR_G300INT  0x0300
-#define BTINT_THC_ADDR_OUTS     0x0400
-#define BTINT_THC_ADDR_INS      0x0500
-#define BTINT_THC_ADDR_ADCVAL   0x0600
-#define BTINT_THC_ADDR_ERRCNT   0x0700
-#define BTINT_THC_ADDR_OVERFL   0x0800
-#define BTINT_THC_ADDR_FRER     0x0804
-#define BTINT_THC_ADDR_BCNT     0x0808
-#define BTINT_THC_ADDR_CHKERR   0x080C
+#define BTINT_THC_ADDR_MAGIC    	0x0000
+#define BTINT_THC_ADDR_CONTROL  	0x0010
+#define BTINT_THC_ADDR_B   			0x0100
+#define BTINT_THC_ADDR_M	    	0x0104
+#define BTINT_THC_ADDR_MULTIPLIER	0x0108
+#define BTINT_THC_ADDR_MINVOLT		0x010C
+#define BTINT_THC_ADDR_AMP		  	0x0200
+#define BTINT_THC_ADDR_AIRP		  	0x0204
+#define BTINT_THC_ADDR_MODE		  	0x0208
+#define BTINT_THC_ADDR_OUTS     	0x0400
+#define BTINT_THC_ADDR_INS      	0x0500
+#define BTINT_THC_ADDR_ADCVAL   	0x0600
+#define BTINT_THC_ADDR_ERRCNT   	0x0700
+#define BTINT_THC_ADDR_OVERFL   	0x0800
+#define BTINT_THC_ADDR_FRER     	0x0804
+#define BTINT_THC_ADDR_BCNT     	0x0808
+#define BTINT_THC_ADDR_CHKERR   	0x080C
 
 typedef struct {
-	hal_float_t *val;
-} btint_thc_gain_t;
+	hal_float_t plasma_divisor;
+	hal_float_t plasma_minvolt;
+	hal_float_t plasma_amps;
+	hal_float_t plasma_airp;
+	hal_float_t plasma_mode;
+} btint_thc_shadow_reg_t;
 
 typedef struct {
     hal_bit_t *arc_ok;
     hal_bit_t *torch_on;
-    hal_bit_t *torch_on_man;
     hal_bit_t *ready;
     hal_bit_t *enable;
     hal_bit_t *lockout;
@@ -78,12 +84,14 @@ typedef struct {
     hal_u32_t *pkt_frerr_cnt;
     hal_u32_t *pkt_byte_cnt;
     hal_u32_t *pkt_chkerr_cnt;
-    btint_thc_gain_t *gain10;    // Arrays of gains
-    btint_thc_gain_t *gain20;
-    btint_thc_gain_t *gain300;
-    hal_bit_t *has_arc_ok;
-    hal_u32_t *range_sel;
+	hal_float_t *b;
+	hal_float_t *m;
     hal_float_t *plasma_divisor;
+	hal_float_t *plasma_minvolt;
+	hal_float_t *plasma_amps;
+	hal_float_t *plasma_airp;
+	hal_float_t *plasma_mode;
+    hal_u32_t *range_sel;
     hal_float_t *vel_tol;
     hal_float_t *volt_tol;
     hal_float_t *correction_kp;
@@ -92,6 +100,7 @@ typedef struct {
 
 typedef struct {
     btint_thc_pins_t *pins;
+	btint_thc_shadow_reg_t *tint_regs;
     int uio_fd;
     const char *name;
     char halname[32];

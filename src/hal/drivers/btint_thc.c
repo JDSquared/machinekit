@@ -149,7 +149,7 @@ static int btint_thc_mmap(btint_thc_t *brd) {
 static int btint_thc_register(btint_thc_t *brd, const char *name)
 {
     char fname[HAL_NAME_LEN + 1];
-		int r = 0, i = 0;
+		int r = 0;
 		u32 temp = 0;
 
 		memset(brd, 0,  sizeof(btint_thc_t));
@@ -173,34 +173,11 @@ static int btint_thc_register(btint_thc_t *brd, const char *name)
 	brd->pins = hal_malloc(sizeof(btint_thc_pins_t));
 	memset(brd->pins, 0, sizeof(btint_thc_pins_t));
 
-	// 10V Gains
-	brd->pins->gain10 = hal_malloc(sizeof(btint_thc_gain_t) * BTINT_THC_GAINCNT);
-	memset(brd->pins->gain10, 0, sizeof(btint_thc_gain_t) * BTINT_THC_GAINCNT);
-
-    	// 20V Gains
-   	 brd->pins->gain20 = hal_malloc(sizeof(btint_thc_gain_t) * BTINT_THC_GAINCNT);
-	memset(brd->pins->gain20, 0, sizeof(btint_thc_gain_t) * BTINT_THC_GAINCNT);
-
-    	// 300V Gains
-    	brd->pins->gain300 = hal_malloc(sizeof(btint_thc_gain_t) * BTINT_THC_GAINCNT);
-	memset(brd->pins->gain300, 0, sizeof(btint_thc_gain_t) * BTINT_THC_GAINCNT);
-
-	for(i = 0; i < BTINT_THC_GAINCNT; i++) {
-		r = hal_pin_float_newf(HAL_OUT, &(brd->pins->gain10[i].val),
-                    	comp_id, "%s.gain10.%d", brd->halname, i);
-		r = hal_pin_float_newf(HAL_OUT, &(brd->pins->gain20[i].val),
-                    	comp_id, "%s.gain20.%d", brd->halname, i);
-		r = hal_pin_float_newf(HAL_OUT, &(brd->pins->gain300[i].val),
-                    	comp_id, "%s.gain300.%d", brd->halname, i);
-	}
-
 	// IO Pins
-	r += hal_pin_bit_newf(HAL_OUT, &(brd->pins->arc_ok),
+	r += hal_pin_bit_newf(HAL_IN, &(brd->pins->arc_ok),
 					comp_id, "%s.arc-ok", brd->halname);
 	r += hal_pin_bit_newf(HAL_IN, &(brd->pins->torch_on),
 					comp_id, "%s.torch-on", brd->halname);
-	r += hal_pin_bit_newf(HAL_IN, &(brd->pins->torch_on_man),
-					comp_id, "%s.torch-on-man", brd->halname);
 
 	// THC
 	r += hal_pin_float_newf(HAL_OUT, &(brd->pins->arc_volt),
@@ -266,16 +243,29 @@ static int btint_thc_register(btint_thc_t *brd, const char *name)
 					comp_id, "%s.correction-kd", brd->halname);
 	r += hal_pin_u32_newf(HAL_IN, &(brd->pins->range_sel),
 					comp_id, "%s.range-sel", brd->halname);
+	r += hal_pin_float_newf(HAL_OUT, &(brd->pins->b),
+					comp_id, "%s.b", brd->halname);
+	r += hal_pin_float_newf(HAL_OUT, &(brd->pins->m),
+					comp_id, "%s.m", brd->halname);
 	r += hal_pin_float_newf(HAL_IN, &(brd->pins->plasma_divisor),
 					comp_id, "%s.plasma-divisor", brd->halname);
-	r += hal_pin_bit_newf(HAL_IN, &(brd->pins->has_arc_ok),
-					comp_id, "%s.has-arc-ok", brd->halname);
-
+	r += hal_pin_float_newf(HAL_IN, &(brd->pins->plasma_minvolt),
+					comp_id, "%s.plasma-minvolt", brd->halname);
+	r += hal_pin_float_newf(HAL_IN, &(brd->pins->plasma_amps),
+					comp_id, "%s.plasma-amps", brd->halname);
+	r += hal_pin_float_newf(HAL_IN, &(brd->pins->plasma_airp),
+					comp_id, "%s.plasma-airp", brd->halname);
+	r += hal_pin_float_newf(HAL_IN, &(brd->pins->plasma_mode),
+					comp_id, "%s.plasma-mode", brd->halname);
 
 	if (r < 0) {
         BTINT_ERR(brd->halname, "error adding btint_thc pins, Aborting\n");
         goto fail0;
     }
+
+	// Allocate the shadow registers
+	brd->tint_regs = hal_malloc(sizeof(btint_thc_shadow_reg_t));
+	memset(brd->tint_regs, 0, sizeof(btint_thc_shadow_reg_t));
 
 	// Export the update function
     rtapi_snprintf(fname, sizeof(fname), "%s.update", brd->halname);
@@ -389,11 +379,7 @@ static int btint_thc_update(void *void_btint_thc, const hal_funct_args_t *fa)
 {
 	btint_thc_t *brd = void_btint_thc;
 	u32 temp = 0;
-	int i = 0;
 	float tempf = 0.0f;
-	hal_float_t voltx, volty, voltz, voltd;
-	hal_float_t velc;
-	btint_thc_gain_t *gain;
 	hal_float_t reqv;
 
 	// Lie to the control to avoid feedback errors
@@ -405,106 +391,73 @@ static int btint_thc_update(void *void_btint_thc, const hal_funct_args_t *fa)
 
 	if(temp == 0) {
 		*brd->pins->ready = 0;
-		*brd->pins->z_pos_out = *brd->pins->z_pos_in;
-        *brd->pins->arc_ok = 0;
-		return 0;
 	}
 	else if(*brd->pins->ready == 0) {
-		// Read the gains
-		for(i = 0; i < BTINT_THC_GAINCNT; i++) {
-		    btint_thc_read(brd, (BTINT_THC_ADDR_G10INT + i * 4), (void *)&tempf, 4);
-		    *brd->pins->gain10[i].val = tempf;
-		    btint_thc_read(brd, (BTINT_THC_ADDR_G20INT + i * 4), (void *)&tempf, 4);
-		    *brd->pins->gain20[i].val = tempf;
-		    btint_thc_read(brd, (BTINT_THC_ADDR_G300INT + i * 4), (void *)&tempf, 4);
-		    *brd->pins->gain300[i].val = tempf;
-		}
+		// Read the calibration values
+	    btint_thc_read(brd, BTINT_THC_ADDR_B, (void *)&tempf, 4);
+	    *brd->pins->b = tempf;
+	    btint_thc_read(brd, BTINT_THC_ADDR_M, (void *)&tempf, 4);
+	    *brd->pins->m = tempf;
+	    btint_thc_read(brd, BTINT_THC_ADDR_MULTIPLIER, (void *)&tempf, 4);
+	    brd->tint_regs->plasma_divisor = tempf;
+	    btint_thc_read(brd, BTINT_THC_ADDR_MINVOLT, (void *)&tempf, 4);
+	    brd->tint_regs->plasma_minvolt = tempf;
+
 		*brd->pins->ready = 1;
 	}
 
-	// The status regs
-	btint_thc_read(brd, BTINT_THC_ADDR_ERRCNT, (void *)brd->pins->pkt_err_cnt, 4);
-	btint_thc_read(brd, BTINT_THC_ADDR_OVERFL, (void *)brd->pins->pkt_overfl_cnt, 4);
-	btint_thc_read(brd, BTINT_THC_ADDR_FRER, (void *)brd->pins->pkt_frerr_cnt, 4);
-	btint_thc_read(brd, BTINT_THC_ADDR_BCNT, (void *)brd->pins->pkt_byte_cnt, 4);
-	btint_thc_read(brd, BTINT_THC_ADDR_CHKERR, (void *)brd->pins->pkt_chkerr_cnt, 4);
+	// The status regs used for debugging. Save the time reading from the slow bus
+	// in a normal loop
+//	btint_thc_read(brd, BTINT_THC_ADDR_ERRCNT, (void *)brd->pins->pkt_err_cnt, 4);
+//	btint_thc_read(brd, BTINT_THC_ADDR_OVERFL, (void *)brd->pins->pkt_overfl_cnt, 4);
+//	btint_thc_read(brd, BTINT_THC_ADDR_FRER, (void *)brd->pins->pkt_frerr_cnt, 4);
+//	btint_thc_read(brd, BTINT_THC_ADDR_BCNT, (void *)brd->pins->pkt_byte_cnt, 4);
+//	btint_thc_read(brd, BTINT_THC_ADDR_CHKERR, (void *)brd->pins->pkt_chkerr_cnt, 4);
 
-	// Dry run doesn't interact with the hardware directly
+	// We use the shadow registers so we read fast ram instead of the slow
+	// peripheral a bunch of times to check if our values are synced to hardware.
+	if(*brd->pins->plasma_divisor != brd->tint_regs->plasma_divisor) {
+		tempf = (float)*brd->pins->plasma_divisor;
+		btint_thc_write(brd, BTINT_THC_ADDR_MULTIPLIER, (void *)&tempf, 4);
+		brd->tint_regs->plasma_divisor = *brd->pins->plasma_divisor;
+	}
+
+	if(*brd->pins->plasma_minvolt != brd->tint_regs->plasma_minvolt) {
+		tempf = (float)*brd->pins->plasma_minvolt;
+		btint_thc_write(brd, BTINT_THC_ADDR_MINVOLT, (void *)&tempf, 4);
+		brd->tint_regs->plasma_minvolt = *brd->pins->plasma_minvolt;
+	}
+
+	// Dry run controls the torch enable
 	if(*brd->pins->dry_run > 0) {
-		// Force the torch off, but don't change the hal pin
+		// Force the torch enable off
 		temp = 0;
 		btint_thc_write(brd, BTINT_THC_ADDR_OUTS, (void *)&temp, 4);
-
-		// A dry run lies about the arc_ok
-		*brd->pins->arc_ok = 1;
-
-		// If dry_run is turned on on the fly, we don't immediately remove
-		// the height offset
-		goto SKIP_ARC;
-	}
-
-	// Check for handshake pin signaling new/ready-for-new data
-
-	// The input pins
-	if(*brd->pins->has_arc_ok > 0) {
-		btint_thc_read(brd, BTINT_THC_ADDR_INS, (void *)&temp, 4);
-		*brd->pins->arc_ok = ((temp & 0x2) > 0) ? 1 : 0;
 	}
 	else {
-		*brd->pins->arc_ok = 1;
+		// Enable the torch if dry run is off
+		temp = 0x4;
+		btint_thc_write(brd, BTINT_THC_ADDR_OUTS, (void *)&temp, 4);
 	}
 
-	// Write the output pins
-	temp = ((*brd->pins->torch_on > 0) || (*brd->pins->torch_on_man > 0)) ? 1 : 0;
-	btint_thc_write(brd, BTINT_THC_ADDR_OUTS, (void *)&temp, 4);
+	// Handshake pin signaling new/ready-for-new data?
 
-    // Grab the proper gains
-	switch(*brd->pins->range_sel)
-	{
-		case 10:
-			gain = brd->pins->gain10;
-		    break;
-		case 20:
-		    gain = brd->pins->gain20;
-		    break;
-		case 300:
-		    gain = brd->pins->gain300;
-		    break;
-		default:
-		    gain = 0;
-		    break;
-	}
 
-	// The arc voltage is found from a 5th order fit based on the adc selected range,
-	// and the divisor used on the plasma unit
-	if(gain == 0) {
-		*brd->pins->arc_volt = 0;
-	}
-	else {
-		btint_thc_read(brd, BTINT_THC_ADDR_ADCVAL, &temp, 4);
-		voltx = (hal_float_t)temp; // x
-		volty = voltx * voltx;     // x^2
-		voltz = volty * volty;     // x^4
-		voltd = (*brd->pins->plasma_divisor) *
-	        	((*gain[5].val * voltz * voltx) + (*gain[4].val * voltz) +
-	         	(*gain[3].val * volty * voltx) + (*gain[2].val * volty) +
-	         	(*gain[1].val * voltx) + *gain[0].val);
-		*brd->pins->arc_volt = (voltd > 0.0f) ? voltd : 0.0f;
-	}
+	// The arc voltage is reported from the tint board directly
+	btint_thc_read(brd, BTINT_THC_ADDR_ADCVAL, &tempf, 4);
+	*brd->pins->arc_volt = (hal_float_t)tempf;
 
 	// Do the THC
 	reqv = *brd->pins->req_arc_volt + *brd->pins->req_arc_volt_off;
 
 	// correction_kp is treated as an upper limit that we are allowed to correct
 	// per period. We scale this down based on the differential from the previous
-	// cycle's error. Cap error calculation so the Z head can keep up..
-	velc = *brd->pins->correction_kp * 2;
+	// cycle's error.
 
-SKIP_ARC:
 	// If we are enabled, and the torch is on, we can calculate a valid shift
-	if((*brd->pins->enable > 0) && (*brd->pins->torch_on > 0) && 
-		(*brd->pins->lockout == 0) &&
-		(*brd->pins->dry_run == 0)) {
+	if((*brd->pins->ready == 1) && (*brd->pins->enable > 0) && 
+		(*brd->pins->torch_on > 0) && 
+		(*brd->pins->lockout == 0) && (*brd->pins->dry_run == 0)) {
 		hal_float_t minv = *brd->pins->req_vel * (*brd->pins->vel_tol);
 		int velok = (*brd->pins->cur_vel > 0.0f && *brd->pins->cur_vel >= minv) ? 1 : 0;
 		hal_float_t pdif = *brd->pins->z_pos_out - *brd->pins->z_pos_fb_in;
@@ -517,7 +470,7 @@ SKIP_ARC:
 			*brd->pins->z_work = *brd->pins->z_pos_in;
 
 		if((*brd->pins->arc_ok > 0) && (velok > 0)) {
-			if(pdif < velc) {
+			if(pdif < *brd->pins->correction_kp) {
 				if(((reqv + *brd->pins->volt_tol) < *brd->pins->arc_volt) ||
 			     ((reqv - *brd->pins->volt_tol) > *brd->pins->arc_volt)) {
 						*brd->pins->active = 1;
@@ -545,9 +498,9 @@ SKIP_ARC:
 						*brd->pins->prev_err = err;
 				}
 			}
-			else {
-				*brd->pins->active = 0;
-			}
+		}
+		else {
+			*brd->pins->active = 0;
 		}
 	}
 	else { 
@@ -579,3 +532,4 @@ SKIP_ARC:
 
 	return 0;
 }
+
