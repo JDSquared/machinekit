@@ -105,8 +105,9 @@ cdef class RTAPILogger:
         self._tag = tag
 
     def write(self,line):
-        l = line.rstrip(" \t\f\v\n\r")
-        rtapi_print_msg(self._level, l)
+        cdef bytes py_bytes = line.rstrip(" \t\f\v\n\r").encode()
+        cdef char *c_string = py_bytes
+        rtapi_print_msg(self._level, "%s", c_string)
 
     def flush(self):
         pass
@@ -297,8 +298,8 @@ def init_RTAPI(**kwargs):
     if not __rtapicmd:
         __rtapicmd = RTAPIcommand(**kwargs)
         for method in dir(__rtapicmd):
-            if callable(getattr(__rtapicmd, method)) and not method.startswith('__'):
-                 setattr(sys.modules[__name__], method, getattr(__rtapicmd, method))
+            if callable(getattr(__rtapicmd, method)) and method is not '__init__':
+                setattr(sys.modules[__name__], method, getattr(__rtapicmd, method))
     else:
         raise RuntimeError('RTAPIcommand already initialized')
     if not __rtapicmd:

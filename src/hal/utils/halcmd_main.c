@@ -61,6 +61,8 @@
 #include <search.h>
 #include <inifile.h>
 
+#define CMD_BUF_LEN 200
+
 static int get_input(FILE *srcfile, char *buf, size_t bufsize);
 static void print_help_general(int showR);
 static int release_HAL_mutex(void);
@@ -73,6 +75,12 @@ extern char *logpath;
 *                   LOCAL FUNCTION DEFINITIONS                         *
 ************************************************************************/
 
+void cleanup(char *uuid_ptr)
+{
+    if(uuid_ptr != NULL)
+        free(uuid_ptr);
+}
+
 int main(int argc, char **argv)
 {
     int c, fd;
@@ -80,11 +88,12 @@ int main(int argc, char **argv)
     int filemode = 0;
     char *filename = NULL;
     FILE *srcfile = NULL;
-    char raw_buf[MAX_CMD_LEN+1];
+    char raw_buf[CMD_BUF_LEN+1];
     int linenumber = 1;
     char *cf=NULL, *cw=NULL, *cl=NULL;
     char *uri = NULL; // NULL - use service discovery
     char *service_uuid = NULL; // must have a global uuid
+    int strdupped_uuid = 0;
 
     inifile = getenv("MACHINEKIT_INI");
     /* use default if not specified by user */
@@ -157,6 +166,8 @@ int main(int argc, char **argv)
                 proto_debug = 1;
 		break;
 	    case 'C':
+		// Coverity doesn't like this and you can see why
+		// not going to mess with it for now
                 cl = getenv("COMP_LINE");
                 cw = getenv("COMP_POINT");
                 if (!cl || !cw) exit(0);
@@ -176,7 +187,11 @@ int main(int argc, char **argv)
                     halcmd_startup(1, uri, service_uuid);
                     propose_completion(cl, cf, n);
                 }
-                if (comp_id >= 0) halcmd_shutdown();
+                if (comp_id >= 0){
+                    if(strdupped_uuid)
+                        cleanup(service_uuid);
+                    halcmd_shutdown();
+                }
                 exit(0);
                 break;
 #ifndef NO_INI
@@ -225,7 +240,10 @@ int main(int argc, char **argv)
     if (service_uuid == NULL) {
 	const char *s;
 	if ((s = iniFind(inifp, "MKUUID", "MACHINEKIT"))) {
-	    service_uuid = strdup(s);
+	    // this was not freed anywhere
+    	    service_uuid = strdup(s);
+    	    // set flag so we know to use cleanup()
+    	    strdupped_uuid = 1;
 	}
     }
     if (service_uuid == NULL) {
@@ -257,7 +275,28 @@ int main(int argc, char **argv)
         }
     }
 
-    if ( halcmd_startup(0, uri, service_uuid) != 0 ) return 1;
+    if ( halcmd_startup(0, uri, service_uuid) != 0 ){
+        if(strdupped_uuid)
+            cleanup(service_uuid);
+        return 1;
+    }
+    {
+	char cmdline[CMD_BUF_LEN];
+	cmdline[0] = '\0';
+	int i, len = 0;
+	for (i=1; i < argc; i++) {
+	    len += strlen(argv[i]) + 1;
+	    if (len < CMD_BUF_LEN) {
+		strcat(cmdline, argv[i]);
+		strcat(cmdline, " ");
+	    }
+	    else {
+		fprintf(stderr, "halcmd commandline exceeds %i chars", CMD_BUF_LEN);
+		exit(-1);
+	    }
+	}
+	rtapi_print_msg(RTAPI_MSG_DBG, "--halcmd %s", cmdline);
+    }
 
     errorcount = 0;
     /* HAL init is OK, let's process the command(s) */
@@ -278,7 +317,7 @@ int main(int argc, char **argv)
         }
     } else {
 	/* read command line(s) from 'srcfile' */
-	while (get_input(srcfile, raw_buf, MAX_CMD_LEN)) {
+	while (get_input(srcfile, raw_buf, CMD_BUF_LEN)) {
 	    char *tokens[MAX_TOK+1];
 	    halcmd_set_linenumber(linenumber++);
 	    /* remove comments, do var substitution, and tokenise */
@@ -312,6 +351,11 @@ int main(int argc, char **argv)
 	}
     }
     /* all done */
+    if (!scriptmode && srcfile == stdin && isatty(0)) {
+	halcmd_save_history();
+    }
+    if(strdupped_uuid)
+        cleanup(service_uuid);
     halcmd_shutdown();
     if ( errorcount > 0 ) {
 	return 1;
